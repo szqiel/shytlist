@@ -13,6 +13,7 @@ export default function Projects() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [director, setDirector] = useState('');
+  const [dp, setDp] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function Projects() {
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
-    if (!projectName || !director || !user) return;
+    if (!projectName || !director || !dp || !user) return;
 
     try {
       const { data, error } = await supabase
@@ -53,6 +54,7 @@ export default function Projects() {
         .insert([{ 
           title: projectName, 
           director,
+          dp,
           user_id: user.id
         }])
         .select()
@@ -65,6 +67,7 @@ export default function Projects() {
         setIsModalOpen(false);
         setProjectName('');
         setDirector('');
+        setDp('');
         navigate(`/projects/${data.id}`);
       }
     } catch (error) {
@@ -117,7 +120,7 @@ export default function Projects() {
         <div className="py-32 text-center rounded-3xl border border-white/5 bg-zinc-900/30 backdrop-blur-sm">
           <Film className="w-12 h-12 text-zinc-700 mx-auto mb-6" />
           <h3 className="text-zinc-400 font-semibold text-lg">No active projects</h3>
-          <p className="text-zinc-600 mt-2">Start by creating your first cinematic sequence.</p>
+          <p className="text-zinc-600 mt-2">Create your first project to get started.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -157,6 +160,10 @@ export default function Projects() {
                     <div className="flex items-center gap-3 text-zinc-500 text-sm font-medium">
                       <User className="w-4 h-4 text-zinc-600" />
                       <span>Dir. {project.director}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-zinc-500 text-sm font-medium">
+                      <User className="w-4 h-4 text-zinc-600" />
+                      <span>DP. {project.dp}</span>
                     </div>
                     <div className="flex items-center gap-3 text-zinc-500 text-sm font-medium">
                       <Calendar className="w-4 h-4 text-zinc-600" />
@@ -232,6 +239,17 @@ export default function Projects() {
                     className="input-field"
                     value={director}
                     onChange={(e) => setDirector(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="label-micro text-left block font-medium">Director of Photography</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Roger Deakins"
+                    className="input-field"
+                    value={dp}
+                    onChange={(e) => setDp(e.target.value)}
                   />
                 </div>
                 <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base">

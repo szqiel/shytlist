@@ -17,6 +17,7 @@ export type Project = {
   user_id: string;
   title: string;
   director: string;
+  dp: string;
   created_at?: string;
   shots?: Shot[];
 }

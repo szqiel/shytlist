@@ -1,8 +1,9 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, LayoutDashboard, Mail, LogOut, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Mail, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+import Logo from './Logo';
 
 interface LayoutProps {
   children: ReactNode;
@@ -37,16 +38,13 @@ export default function Layout({ children }: LayoutProps) {
       {/* Navigation */}
       <nav className="h-20 bg-nav/80 backdrop-blur-md border-b border-white/5 px-8 flex items-center justify-between z-50 sticky top-0">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 bg-zinc-900 border border-white/10 flex items-center justify-center rounded-xl transition-all duration-300 group-hover:border-brand-cyan/50">
-            <Camera className="w-5 h-5 text-zinc-400 group-hover:text-brand-cyan transition-colors" />
-          </div>
+          <Logo size="md" className="transition-all duration-300 group-hover:scale-105" />
           <div className="flex flex-col">
             <span className="text-lg font-semibold tracking-tight text-white leading-none">Shyt<span className="text-brand-cyan">list</span></span>
-            <span className="text-[10px] text-zinc-500 font-medium tracking-wide">Lazy Shotlist Builder</span>
           </div>
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -58,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
               }`}
             >
               <item.icon className="w-4 h-4" />
-              <span className="hidden md:inline font-medium">{item.name}</span>
+              <span className="hidden md:flex font-medium">{item.name}</span>
             </Link>
           ))}
           <div className="h-8 w-px bg-white/5 ml-2 hidden md:block"></div>

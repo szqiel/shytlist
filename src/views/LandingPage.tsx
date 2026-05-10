@@ -1,9 +1,10 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X, Film } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import Logo from '../components/Logo';
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -51,10 +52,10 @@ export default function LandingPage() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-        className="w-20 h-20 bg-zinc-900 border border-white/10 rounded-2xl flex items-center justify-center mb-12 shadow-2xl relative group"
+        className="mb-12 relative group"
       >
         <div className="absolute inset-0 bg-brand-cyan/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-        <Film className="w-8 h-8 text-brand-cyan relative z-10" />
+        <Logo size="xl" className="relative z-10" />
       </motion.div>
 
       <motion.h1
@@ -73,7 +74,7 @@ export default function LandingPage() {
         transition={{ delay: 0.4, duration: 1 }}
         className="text-zinc-400 max-w-xl text-lg mb-16 font-medium leading-relaxed"
       >
-        Shotlist builder for Director of Photography
+        A professional shotlist builder designed for Directors of Photography and filmmakers.
       </motion.p>
 
       <motion.button
