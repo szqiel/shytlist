@@ -2,7 +2,8 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Mail, Lock, Loader2, Camera } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, Loader2 } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -58,14 +59,14 @@ export default function Auth() {
         </div>
 
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-brand-cyan/10">
-            <Camera className="w-8 h-8 text-brand-cyan" />
+          <div className="mb-6 flex justify-center">
+            <Logo size="lg" className="shadow-xl shadow-brand-cyan/10" />
           </div>
           <h1 className="text-3xl font-semibold text-white tracking-tight">
-            {isLogin ? 'Welcome Back' : 'Join Shytlist'}
+            {isLogin ? 'Welcome Back' : 'Get Started'}
           </h1>
           <p className="text-zinc-500 text-sm mt-2">
-            {isLogin ? 'Access your cinematic protocols' : 'Start building your visual narrative'}
+            {isLogin ? 'Access your account and projects' : 'Start building your shotlists today'}
           </p>
         </div>
 
