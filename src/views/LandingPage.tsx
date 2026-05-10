@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X, Film } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/AuthContext';
 
 export default function LandingPage() {
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [director, setDirector] = useState('');
@@ -12,12 +14,22 @@ export default function LandingPage() {
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     if (!projectName || !director) return;
 
     try {
       const { data, error } = await supabase
         .from('projects')
-        .insert([{ title: projectName, director }])
+        .insert([{ 
+          title: projectName, 
+          director,
+          user_id: user.id
+        }])
         .select()
         .single();
 
