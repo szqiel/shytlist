@@ -1,7 +1,8 @@
-import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { ReactNode, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, LayoutDashboard, Mail, Github } from 'lucide-react';
+import { Camera, LayoutDashboard, Mail, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,11 +10,24 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const navItems = [
     { name: 'Dashboard', path: '/projects', icon: LayoutDashboard },
     { name: 'Contact', path: '/contact', icon: Mail },
   ];
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const getInitials = (email: string | undefined) => {
+    if (!email) return '??';
+    return email.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-bg relative overflow-x-hidden flex flex-col">
@@ -48,9 +62,50 @@ export default function Layout({ children }: LayoutProps) {
             </Link>
           ))}
           <div className="h-8 w-px bg-white/5 ml-2 hidden md:block"></div>
-          <div className="w-10 h-10 rounded-xl border border-brand-cyan/30 bg-zinc-900 flex items-center justify-center ml-2">
-             <span className="text-xs font-semibold text-zinc-100 uppercase">SZ</span>
-          </div>
+          
+          {user ? (
+            <div className="relative">
+              <button 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl border border-brand-cyan/30 bg-zinc-900 flex items-center justify-center transition-all group-hover:border-brand-cyan">
+                   <span className="text-xs font-semibold text-zinc-100 uppercase">{getInitials(user.email)}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/5 rounded-xl shadow-2xl p-2 z-[60]"
+                  >
+                    <div className="px-3 py-2 border-b border-white/5 mb-1">
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Account</p>
+                      <p className="text-xs text-zinc-300 truncate font-medium">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <Link 
+              to="/auth" 
+              className="text-sm font-medium text-brand-cyan hover:text-cyan-300 transition-colors"
+            >
+              Login
+            </Link>
+          )}
         </div>
       </nav>
 

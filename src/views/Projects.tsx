@@ -4,8 +4,10 @@ import { Plus, Trash2, ArrowUpRight, Film, User, Calendar, X, Loader2 } from 'lu
 import { Project } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/AuthContext';
 
 export default function Projects() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,8 +16,10 @@ export default function Projects() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user) {
+      fetchProjects();
+    }
+  }, [user]);
 
   const fetchProjects = async () => {
     try {
@@ -26,6 +30,7 @@ export default function Projects() {
           *,
           shots (count)
         `)
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -40,12 +45,16 @@ export default function Projects() {
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
-    if (!projectName || !director) return;
+    if (!projectName || !director || !user) return;
 
     try {
       const { data, error } = await supabase
         .from('projects')
-        .insert([{ title: projectName, director }])
+        .insert([{ 
+          title: projectName, 
+          director,
+          user_id: user.id
+        }])
         .select()
         .single();
 
