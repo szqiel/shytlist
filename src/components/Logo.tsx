@@ -1,4 +1,3 @@
-import { motion } from 'motion/react';
 
 interface LogoProps {
   className?: string;
