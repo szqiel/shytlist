@@ -108,7 +108,7 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Page Content */}
-      <main className="flex-1 relative z-10 px-6 md:px-12 py-12 max-w-7xl mx-auto w-full">
+      <main className={`flex-1 relative z-10 w-full ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4' : 'px-6 md:px-12 py-12 max-w-7xl mx-auto'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

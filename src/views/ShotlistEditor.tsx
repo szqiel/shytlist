@@ -636,7 +636,7 @@ export default function ShotlistEditor() {
   if (!project) return null;
 
   return (
-    <div className="flex flex-col h-full bg-bg -mx-6 md:-mx-12 -my-8 overflow-hidden min-h-[calc(100vh-64px)]">
+    <div className="flex flex-col h-full bg-bg overflow-hidden min-h-[calc(100vh-64px)]">
       <div className="flex h-full flex-1 overflow-hidden">
         {/* Sidebar Project Info */}
         <aside className="w-72 bg-zinc-950 border-r border-white/5 p-6 hidden lg:flex flex-col gap-10">
