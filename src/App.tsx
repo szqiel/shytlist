@@ -12,6 +12,7 @@ import Contact from './views/Contact';
 import ShotlistEditor from './views/ShotlistEditor';
 import Auth from './views/Auth';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { Toaster } from 'sonner';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -53,6 +54,7 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster richColors position="top-right" />
       <Router>
         <AppContent />
       </Router>
