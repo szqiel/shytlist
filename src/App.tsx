@@ -5,6 +5,7 @@
 
 import { ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Layout from './components/Layout';
 import LandingPage from './views/LandingPage';
 import Projects from './views/Projects';
@@ -58,6 +59,7 @@ export default function App() {
       <Router>
         <AppContent />
       </Router>
+      <Analytics />
     </AuthProvider>
   );
 }
