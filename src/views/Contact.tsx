@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { Mail } from 'lucide-react';
 
 export default function Contact() {
   return (
@@ -19,9 +20,12 @@ export default function Contact() {
         
         <div className="pt-8">
           <a 
-            href="mailto:kriebusines@gmail.com" 
-            className="btn-primary py-4 px-10 text-lg font-semibold inline-flex items-center gap-3 rounded-xl shadow-xl shadow-brand-cyan/10 hover:shadow-brand-cyan/20"
+            href="https://mail.google.com/mail/?view=cm&fs=1&to=kriebusines@gmail.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary py-4 px-10 text-lg font-semibold inline-flex items-center gap-3 rounded-xl shadow-xl shadow-brand-cyan/10 hover:shadow-brand-cyan/20 cursor-pointer"
           >
+            <Mail className="w-5 h-5" />
             kriebusines@gmail.com
           </a>
         </div>
