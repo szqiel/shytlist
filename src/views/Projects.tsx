@@ -5,6 +5,7 @@ import { Project } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import { toast } from 'sonner';
 
 export default function Projects() {
   const { user } = useAuth();
@@ -38,7 +39,7 @@ export default function Projects() {
       setProjects(data || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      alert('Failed to load projects');
+      toast.error('Failed to load projects');
     } finally {
       setIsLoading(false);
     }
@@ -68,11 +69,12 @@ export default function Projects() {
         setProjectName('');
         setDirector('');
         setDp('');
+        toast.success('Project created successfully');
         navigate(`/projects/${data.id}`);
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project');
+      toast.error('Failed to create project');
     }
   };
 
@@ -88,9 +90,10 @@ export default function Projects() {
 
         if (error) throw error;
         setProjects(projects.filter((p) => p.id !== id));
+        toast.success('Project deleted');
       } catch (error) {
         console.error('Error deleting project:', error);
-        alert('Failed to delete project');
+        toast.error('Failed to delete project');
       }
     }
   };

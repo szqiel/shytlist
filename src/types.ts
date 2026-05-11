@@ -9,6 +9,7 @@ export type Shot = {
   angle: string;
   framing: string;
   description: string;
+  thumbnail_url?: string;
   created_at?: string;
 }
 
@@ -18,6 +19,7 @@ export type Project = {
   title: string;
   director: string;
   dp: string;
+  company_logo_url?: string;
   created_at?: string;
   shots?: Shot[];
 }
