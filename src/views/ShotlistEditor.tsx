@@ -1,21 +1,17 @@
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
   Trash2, 
-  Download, 
   GripVertical, 
   ArrowLeft, 
-  Save,
   CheckCircle2,
   FileDown,
   FileSpreadsheet,
-  Film,
   Loader2,
   Image as ImageIcon,
   Upload,
-  Sparkles,
   X,
   LayoutGrid,
   List,
@@ -23,8 +19,7 @@ import {
   Edit2,
   ChevronRight,
   ChevronDown,
-  Clock,
-  Zap
+  Clock
 } from 'lucide-react';
 import { 
   DragDropContext, 
@@ -41,7 +36,6 @@ import { Project, Shot } from '../types';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
-const SETUP_OVERHEAD_PER_SCENE = 15 * 60; // 15 minutes in seconds
 
 const calculateShotDuration = (shot: Shot): number => {
   let baseTime = 3;
@@ -122,14 +116,12 @@ export default function ShotlistEditor() {
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [shots, setShots] = useState<Shot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [tempName, setTempName] = useState('');
   const [tempDirector, setTempDirector] = useState('');
   const [tempDp, setTempDp] = useState('');
   const [newShot, setNewShot] = useState<Omit<Shot, 'id' | 'project_id'>>({ ...INITIAL_SHOT_STATE });
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [exportOpen, setExportOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [collapsedScenes, setCollapsedScenes] = useState<Record<string, boolean>>({});
@@ -212,7 +204,6 @@ export default function ShotlistEditor() {
     const loadData = async () => {
       if (!id) return;
       try {
-        setIsLoading(true);
         // Fetch project
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
@@ -247,8 +238,6 @@ export default function ShotlistEditor() {
       } catch (error) {
         console.error('Error loading project data:', error);
         toast.error('Failed to load project details');
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -1014,13 +1003,13 @@ export default function ShotlistEditor() {
                                       <th className="px-4 py-5 w-40">Movement</th>
                                       <th className="px-4 py-5 w-40">Angle</th>
                                       <th className="px-4 py-5">Description</th>
-                                      <th className="px-4 py-5 w-20 text-right pr-6"></th>
+                                      <th className="px-4 py-5 w-20 text-right pr-6">Actions</th>
                                     </tr>
                                   </thead>
                                   <Droppable droppableId={`scene-${sceneNo}-table`}>
                                     {(provided) => (
                                       <tbody {...provided.droppableProps} ref={provided.innerRef}>
-                                        {sceneShots.map((shot, index) => (
+                                        {sceneShots.map((shot) => (
                                           <DraggableAny key={shot.id} draggableId={shot.id} index={shots.indexOf(shot)}>
                                             {(provided: any, snapshot: any) => (
                                               <tr
@@ -1110,7 +1099,7 @@ export default function ShotlistEditor() {
                                     ref={provided.innerRef}
                                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
                                   >
-                                    {sceneShots.map((shot, index) => (
+                                    {sceneShots.map((shot) => (
                                       <DraggableAny key={shot.id} draggableId={shot.id} index={shots.indexOf(shot)}>
                                         {(provided: any, snapshot: any) => (
                                           <div
