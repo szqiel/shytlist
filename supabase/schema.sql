@@ -28,7 +28,7 @@ create table if not exists public.shots (
   angle text default '',
   framing text default '',
   description text default '',
-  thumbnail_url text,
+  storyboard_url text,
   created_at timestamptz default now() not null
 );
 
@@ -141,7 +141,39 @@ create policy "Auth Insert Logos" on storage.objects for insert with check ( buc
 create policy "Auth Update Logos" on storage.objects for update using ( bucket_id = 'logos' and auth.role() = 'authenticated' );
 create policy "Auth Delete Logos" on storage.objects for delete using ( bucket_id = 'logos' and auth.role() = 'authenticated' );
 
--- Storage RLS Policies for Storyboards (Authenticated users can upload/update/delete)
-create policy "Auth Insert Storyboards" on storage.objects for insert with check ( bucket_id = 'storyboards' and auth.role() = 'authenticated' );
-create policy "Auth Update Storyboards" on storage.objects for update using ( bucket_id = 'storyboards' and auth.role() = 'authenticated' );
-create policy "Auth Delete Storyboards" on storage.objects for delete using ( bucket_id = 'storyboards' and auth.role() = 'authenticated' );
+-- Storage RLS Policies for Storyboards
+-- Limit file size to 1MB (1048576 bytes)
+update storage.buckets set file_size_limit = 1048576 where id = 'storyboards';
+
+create policy "Auth Insert Storyboards" on storage.objects for insert with check ( 
+  bucket_id = 'storyboards' 
+  and auth.role() = 'authenticated'
+  and exists (
+    select 1 from public.shots s
+    join public.projects p on s.project_id = p.id
+    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
+    and p.user_id = auth.uid()
+  )
+);
+
+create policy "Auth Update Storyboards" on storage.objects for update using ( 
+  bucket_id = 'storyboards' 
+  and auth.role() = 'authenticated'
+  and exists (
+    select 1 from public.shots s
+    join public.projects p on s.project_id = p.id
+    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
+    and p.user_id = auth.uid()
+  )
+);
+
+create policy "Auth Delete Storyboards" on storage.objects for delete using ( 
+  bucket_id = 'storyboards' 
+  and auth.role() = 'authenticated'
+  and exists (
+    select 1 from public.shots s
+    join public.projects p on s.project_id = p.id
+    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
+    and p.user_id = auth.uid()
+  )
+);

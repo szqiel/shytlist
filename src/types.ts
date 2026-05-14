@@ -9,7 +9,7 @@ export type Shot = {
   angle: string;
   framing: string;
   description: string;
-  thumbnail_url?: string;
+  storyboard_url?: string;
   created_at?: string;
 }
 

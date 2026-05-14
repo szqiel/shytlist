@@ -31,45 +31,88 @@ import {
 const DraggableAny = Draggable as any;
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import imageCompression from 'browser-image-compression';
 import { useMemo } from 'react';
 import { Project, Shot } from '../types';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
 
+// Refined production time estimate (in minutes per shot)
+// Uses a simple additive model: base + size modifier + movement setup
 const calculateShotDuration = (shot: Shot): number => {
-  let baseTime = 3;
-  let sizeFactor = 0;
-  let lensFactor = 0;
-  let movementMultiplier = 1.0;
+  // Base: tripod placement, framing, a couple of takes
+  let minutes = 5;
 
+  // Shot size adjustments
   const size = shot.shot_size;
-  if (["Over the Shoulder", "Two Shot"].includes(size)) sizeFactor = 5;
-  else if (["Extreme Wide Shot", "Wide Shot", "Full Shot", "Group Shot", "Cowboy Shot", "Medium Full Shot"].includes(size)) sizeFactor = 3;
-  else if (["Medium Shot", "Medium Close Up", "Close Up", "Point of View"].includes(size)) sizeFactor = 1;
-  else if (["Extreme Close Up", "Insert"].includes(size)) sizeFactor = -1;
+  if (["Extreme Wide Shot", "Wide Shot", "Group Shot"].includes(size)) minutes += 3;
+  else if (["Full Shot", "Cowboy Shot", "Medium Full Shot"].includes(size)) minutes += 2;
+  else if (["Over the Shoulder", "Two Shot"].includes(size)) minutes += 3;
+  else if (["Medium Shot", "Medium Close Up", "Point of View"].includes(size)) minutes += 1;
+  else if (["Close Up"].includes(size)) minutes += 0;
+  else if (["Extreme Close Up", "Insert"].includes(size)) minutes -= 1;
 
-  const lens = shot.lens;
-  if (["12mm", "14mm", "16mm", "18mm", "24mm", "28mm"].includes(lens)) lensFactor = 1;
-
+  // Movement adds gear rigging / rehearsal time (additive, not multiplicative)
   const movement = shot.movement;
-  if (movement === "Static") movementMultiplier = 1.0;
-  else if (["Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Zoom In", "Zoom Out"].includes(movement)) movementMultiplier = 1.5;
-  else if (["Dolly In", "Dolly Out", "Crab Left", "Crab Right", "Pedestal Up", "Pedestal Down", "Crane Up", "Crane Down"].includes(movement)) movementMultiplier = 2.0;
-  else if (["Steadicam", "Handheld", "Tracking Left", "Tracking Right", "Gimbal", "Drone / Aerial"].includes(movement)) movementMultiplier = 3.0;
+  if (movement === "Static" || !movement) { /* no extra */ }
+  else if (["Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Zoom In", "Zoom Out"].includes(movement)) minutes += 2;
+  else if (["Dolly In", "Dolly Out", "Crab Left", "Crab Right", "Pedestal Up", "Pedestal Down"].includes(movement)) minutes += 4;
+  else if (["Crane Up", "Crane Down"].includes(movement)) minutes += 5;
+  else if (["Steadicam", "Handheld", "Gimbal", "Tracking Left", "Tracking Right"].includes(movement)) minutes += 3;
+  else if (movement === "Drone / Aerial") minutes += 6;
 
-  return Math.round((baseTime + sizeFactor + lensFactor) * movementMultiplier);
+  return Math.max(3, minutes);
 };
 
-const formatDuration = (totalSeconds: number): string => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  
-  if (hours > 0) {
-    return `${hours}h ${mins}m`;
-  }
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+// Per-take duration in seconds based on shot size (shared between shooting & film duration estimates)
+const SIZE_TAKE_DURATION: Record<string, number> = {
+  "Extreme Wide Shot": 45, "Wide Shot": 45, "Group Shot": 45,
+  "Full Shot": 30, "Cowboy Shot": 30, "Medium Full Shot": 30,
+  "Medium Shot": 20, "Medium Close Up": 20,
+  "Over the Shoulder": 25, "Two Shot": 25,
+  "Close Up": 15, "Point of View": 15,
+  "Extreme Close Up": 8, "Insert": 8,
+};
+
+// Shooting time estimate (in minutes per shot)
+// Models: take_duration × num_takes + playback review
+const calculateShootingDuration = (shot: Shot): number => {
+  // Estimated number of takes based on movement complexity
+  const MOVEMENT_TAKES: Record<string, number> = {
+    "Static": 3,
+    "Pan Left": 3, "Pan Right": 3, "Tilt Up": 3, "Tilt Down": 3,
+    "Zoom In": 3, "Zoom Out": 3,
+    "Dolly In": 4, "Dolly Out": 4, "Crab Left": 4, "Crab Right": 4,
+    "Pedestal Up": 4, "Pedestal Down": 4,
+    "Handheld": 4,
+    "Crane Up": 5, "Crane Down": 5,
+    "Steadicam": 5, "Gimbal": 5, "Tracking Left": 5, "Tracking Right": 5,
+    "Drone / Aerial": 5,
+  };
+
+  // Extra takes for difficult angles
+  const ANGLE_EXTRA: Record<string, number> = {
+    "Eye Level": 0, "Shoulder Level": 0,
+    "High Angle": 1, "Low Angle": 1, "Hip Level": 1,
+    "Dutch Angle": 1, "Knee Level": 1, "Ground Level": 1,
+    "Top Down / Overhead": 2, "Bird's Eye View": 2, "Worm's Eye View": 2,
+  };
+
+  const takeDuration = SIZE_TAKE_DURATION[shot.shot_size] || 20;
+  const baseTakes = MOVEMENT_TAKES[shot.movement] || 3;
+  const angleExtra = ANGLE_EXTRA[shot.angle] || 0;
+  const numTakes = baseTakes + angleExtra;
+
+  // Total shooting = (take_duration × takes) converted to minutes + 1 min playback
+  return Math.ceil((takeDuration * numTakes) / 60) + 1;
+};
+
+// Estimated final film/video runtime in seconds
+// Each shot contributes ~70% of its take duration (editor trimming)
+const estimateFilmDuration = (shot: Shot): number => {
+  const takeDuration = SIZE_TAKE_DURATION[shot.shot_size] || 20;
+  return Math.round(takeDuration * 0.7);
 };
 
 const INITIAL_SHOT_STATE: Omit<Shot, 'id' | 'project_id'> = {
@@ -186,14 +229,35 @@ export default function ShotlistEditor() {
   [groupedShots]);
 
   const productionMetrics = useMemo(() => {
-    const shotSeconds = shots.reduce((sum, shot) => sum + calculateShotDuration(shot), 0);
+    // 3-layer estimate: Shooting + Setups + Scene Transitions
+    const shootingMinutes = shots.reduce((sum, shot) => sum + calculateShootingDuration(shot), 0);
+    const setupMinutes = shots.reduce((sum, shot) => sum + calculateShotDuration(shot), 0);
     const sceneCount = sceneNumbers.length;
-    const totalSetupSeconds = Math.max(0, (sceneCount - 1) * 15 * 60); // 15 mins per scene change
+    const transitionMinutes = Math.max(0, (sceneCount - 1) * 10); // 10 mins per scene change
+    const totalMinutes = shootingMinutes + setupMinutes + transitionMinutes;
     
+    // Estimated film runtime (sum of per-shot screen time after editor trimming)
+    const filmSeconds = shots.reduce((sum, shot) => sum + estimateFilmDuration(shot), 0);
+    
+    const formatMin = (m: number) => {
+      const h = Math.floor(m / 60);
+      const r = m % 60;
+      if (h > 0) return `${h}h ${r}m`;
+      return `${r}m`;
+    };
+    
+    const formatFilm = (totalSec: number) => {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     return {
-      shotsDuration: formatDuration(shotSeconds),
-      setupDuration: formatDuration(totalSetupSeconds),
-      totalDuration: formatDuration(shotSeconds + totalSetupSeconds),
+      shootingDuration: formatMin(shootingMinutes),
+      setupDuration: formatMin(setupMinutes),
+      transitionDuration: formatMin(transitionMinutes),
+      totalDuration: formatMin(totalMinutes),
+      filmDuration: formatFilm(filmSeconds),
       sceneCount
     };
   }, [shots, sceneNumbers]);
@@ -357,6 +421,19 @@ export default function ShotlistEditor() {
       const deletedShot = shots.find(s => s.id === shotId);
       const affectedSceneNo = deletedShot?.scene_no;
       
+      // Garbage Collection: Delete old storyboard file if exists
+      if (deletedShot?.storyboard_url) {
+        try {
+          const urlObj = new URL(deletedShot.storyboard_url);
+          const pathInBucket = urlObj.pathname.split('/public/storyboards/')[1];
+          if (pathInBucket) {
+            await supabase.storage.from('storyboards').remove([pathInBucket]);
+          }
+        } catch (e) {
+          console.error('Failed to delete old storyboard', e);
+        }
+      }
+      
       const remainingShots = shots.filter(s => s.id !== shotId);
       
       // Update sequence in DB only for the affected scene
@@ -395,13 +472,37 @@ export default function ShotlistEditor() {
   const handleImageUpload = async (shotId: string, file: File) => {
     try {
       setSaveStatus('saving');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${shotId}-${Math.random()}.${fileExt}`;
+      
+      // Client-side compression
+      const options = {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 1080,
+        useWebWorker: true,
+        fileType: file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'image/jpeg' : 'image/webp'
+      };
+      const compressedFile = await imageCompression(file, options);
+
+      const fileExt = compressedFile.name.split('.').pop() || 'webp';
+      const fileName = `${shotId}_${Math.random()}.${fileExt}`;
       const filePath = `storyboards/${fileName}`;
+
+      // Garbage Collection: delete existing storyboard first
+      const currentShot = shots.find(s => s.id === shotId);
+      if (currentShot?.storyboard_url) {
+        try {
+          const urlObj = new URL(currentShot.storyboard_url);
+          const pathInBucket = urlObj.pathname.split('/public/storyboards/')[1];
+          if (pathInBucket) {
+            await supabase.storage.from('storyboards').remove([pathInBucket]);
+          }
+        } catch (e) {
+          console.error('Failed to delete old storyboard', e);
+        }
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('storyboards')
-        .upload(filePath, file);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 
@@ -411,12 +512,12 @@ export default function ShotlistEditor() {
 
       const { error: updateError } = await supabase
         .from('shots')
-        .update({ thumbnail_url: publicUrl })
+        .update({ storyboard_url: publicUrl })
         .eq('id', shotId);
 
       if (updateError) throw updateError;
 
-      setShots(shots.map(s => s.id === shotId ? { ...s, thumbnail_url: publicUrl } : s));
+      setShots(shots.map(s => s.id === shotId ? { ...s, storyboard_url: publicUrl } : s));
       setSaveStatus('saved');
       toast.success('Storyboard updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -505,13 +606,36 @@ export default function ShotlistEditor() {
     if (!project) return;
     try {
       setSaveStatus('saving');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${project.id}-logo.${fileExt}`;
+      
+      // Client-side compression
+      const options = {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 1080,
+        useWebWorker: true,
+        fileType: file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'image/jpeg' : 'image/webp'
+      };
+      const compressedFile = await imageCompression(file, options);
+
+      const fileExt = compressedFile.name.split('.').pop() || 'webp';
+      const fileName = `${project.id}_${Math.random()}.${fileExt}`;
       const filePath = `logos/${fileName}`;
+
+      // Garbage Collection: delete existing logo first
+      if (project.company_logo_url) {
+        try {
+          const urlObj = new URL(project.company_logo_url);
+          const pathInBucket = urlObj.pathname.split('/public/logos/')[1];
+          if (pathInBucket) {
+            await supabase.storage.from('logos').remove([pathInBucket]);
+          }
+        } catch (e) {
+          console.error('Failed to delete old logo', e);
+        }
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('logos')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 
@@ -759,25 +883,6 @@ export default function ShotlistEditor() {
           </div>
 
           <div className="space-y-8">
-            <div className="px-4 py-2 rounded-lg bg-zinc-900/30 border border-white/5 flex items-center gap-3">
-              {saveStatus === 'saving' ? (
-                <>
-                  <Loader2 className="w-3 h-3 text-brand-cyan animate-spin" />
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Saving Changes...</span>
-                </>
-              ) : saveStatus === 'saved' ? (
-                <>
-                  <CheckCircle2 className="w-3 h-3 text-brand-yellow" />
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">All Changes Saved</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-3 h-3 rounded-full bg-zinc-800" />
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Cloud Synced</span>
-                </>
-              )}
-            </div>
-
             {/* PRODUCTION ESTIMATE DASHBOARD */}
             <div className="p-6 bg-zinc-900/50 rounded-2xl border border-white/5 space-y-5">
               <div className="flex items-center gap-2 border-b border-white/5 pb-3">
@@ -785,21 +890,29 @@ export default function ShotlistEditor() {
                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Production Estimate</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Shooting</span>
-                  <p className="text-sm font-semibold text-white">{productionMetrics.shotsDuration}</p>
+                  <p className="text-sm font-semibold text-white">{productionMetrics.shootingDuration}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Setups</span>
                   <p className="text-sm font-semibold text-zinc-400">{productionMetrics.setupDuration}</p>
                 </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Transitions</span>
+                  <p className="text-sm font-semibold text-zinc-400">{productionMetrics.transitionDuration}</p>
+                </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-3">
                 <div className="bg-brand-cyan/5 rounded-xl p-3 border border-brand-cyan/10">
-                  <span className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest block mb-1">Estimated Day Length</span>
+                  <span className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest block mb-1">Estimated Day</span>
                   <p className="text-2xl font-bold text-white tracking-tight">{productionMetrics.totalDuration}</p>
+                </div>
+                <div className="bg-brand-yellow/5 rounded-xl p-3 border border-brand-yellow/10">
+                  <span className="text-[9px] text-brand-yellow font-bold uppercase tracking-widest block mb-1">Film Duration</span>
+                  <p className="text-2xl font-bold text-white tracking-tight">{productionMetrics.filmDuration}</p>
                 </div>
               </div>
               
@@ -1107,8 +1220,8 @@ export default function ShotlistEditor() {
                                                       input.click();
                                                     }}
                                                   >
-                                                    {shot.thumbnail_url ? (
-                                                      <img src={shot.thumbnail_url} alt="Storyboard" className="w-full h-full object-cover" />
+                                                    {shot.storyboard_url ? (
+                                                      <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" />
                                                     ) : (
                                                       <ImageIcon className="w-4 h-4 text-zinc-600 group-hover/sb:text-brand-cyan transition-colors" />
                                                     )}
@@ -1187,8 +1300,8 @@ export default function ShotlistEditor() {
                                                 input.click();
                                               }}
                                             >
-                                              {shot.thumbnail_url ? (
-                                                <img src={shot.thumbnail_url} alt="Storyboard" className="w-full h-full object-cover" />
+                                              {shot.storyboard_url ? (
+                                                <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" />
                                               ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                                                   <ImageIcon className="w-6 h-6 text-zinc-700 group-hover/sb:text-brand-cyan transition-colors" />
