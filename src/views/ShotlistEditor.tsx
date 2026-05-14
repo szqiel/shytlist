@@ -129,6 +129,9 @@ export default function ShotlistEditor() {
   const ALL_COLUMNS = ['Shot Size', 'Lens', 'Movement', 'Angle', 'Framing', 'Description'];
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<string[]>(ALL_COLUMNS);
+  const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+  const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'detail_coverage' | null>(null);
+  const [presetSceneNo, setPresetSceneNo] = useState('1');
 
 
 
@@ -226,15 +229,23 @@ export default function ShotlistEditor() {
         const { data: shotsData, error: shotsError } = await supabase
           .from('shots')
           .select('*')
-          .eq('project_id', id)
-          .order('shot_no', { ascending: true });
+          .eq('project_id', id);
 
         if (shotsError) throw shotsError;
-        setShots(shotsData || []);
+        
+        const sortedShots = (shotsData || []).sort((a: any, b: any) => {
+          const sceneA = parseInt(a.scene_no) || 0;
+          const sceneB = parseInt(b.scene_no) || 0;
+          if (sceneA !== sceneB) return sceneA - sceneB;
+          return parseInt(a.shot_no) - parseInt(b.shot_no);
+        });
+        
+        setShots(sortedShots);
 
-        // Set next shot number
-        const nextNo = ((shotsData?.length || 0) + 1).toString();
-        setNewShot(prev => ({ ...prev, shot_no: nextNo }));
+        // Set next shot number for the current scene (default Scene 1)
+        const scene1Shots = sortedShots.filter(s => s.scene_no === '1');
+        const nextNo = (scene1Shots.length + 1).toString();
+        setNewShot(prev => ({ ...prev, shot_no: nextNo, scene_no: '1' }));
       } catch (error) {
         console.error('Error loading project data:', error);
         toast.error('Failed to load project details');
@@ -281,12 +292,21 @@ export default function ShotlistEditor() {
       if (error) throw error;
 
       if (data) {
-        const updatedShots = [...shots, data];
+        const updatedShots = [...shots, data].sort((a: any, b: any) => {
+          const sceneA = parseInt(a.scene_no) || 0;
+          const sceneB = parseInt(b.scene_no) || 0;
+          if (sceneA !== sceneB) return sceneA - sceneB;
+          return parseInt(a.shot_no) - parseInt(b.shot_no);
+        });
         setShots(updatedShots);
+        
+        const nextSceneNo = newShot.scene_no;
+        const nextShotNo = (updatedShots.filter(s => s.scene_no === nextSceneNo).length + 1).toString();
+        
         setNewShot({ 
           ...INITIAL_SHOT_STATE, 
-          shot_no: (updatedShots.length + 1).toString(),
-          scene_no: newShot.scene_no
+          shot_no: nextShotNo,
+          scene_no: nextSceneNo
         });
         setSaveStatus('saved');
         toast.success('Shot added');
@@ -333,27 +353,36 @@ export default function ShotlistEditor() {
 
       if (error) throw error;
 
-      // Local update and renumbering
+      // Local update and renumbering per scene
+      const deletedShot = shots.find(s => s.id === shotId);
+      const affectedSceneNo = deletedShot?.scene_no;
+      
       const remainingShots = shots.filter(s => s.id !== shotId);
       
-      // Update remaining shots' numbers in database to keep them sequential
-      const renumberedShots = remainingShots.map((s, idx): Shot => ({
+      // Update sequence in DB only for the affected scene
+      const sceneShots = remainingShots.filter(s => s.scene_no === affectedSceneNo);
+      const renumberedSceneShots = sceneShots.map((s, idx): Shot => ({
         ...s,
         shot_no: (idx + 1).toString()
       }));
-      
-      // Batch update the database
-      const updates = renumberedShots.map(shot => supabase
+
+      // Merge back into all shots
+      const finalShots = remainingShots.map(s => {
+        const updated = renumberedSceneShots.find(us => us.id === s.id);
+        return updated || s;
+      });
+
+      // Update sequence in DB
+      const updates = renumberedSceneShots.map(shot => supabase
         .from('shots')
         .update({ shot_no: shot.shot_no })
         .eq('id', shot.id)
       );
-      
       await Promise.all(updates);
-      setShots(renumberedShots);
-      
-      setNewShot(prev => ({ ...prev, shot_no: (renumberedShots.length + 1).toString() }));
-      
+
+      setShots(finalShots);
+      const nextShotNo = (finalShots.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
+      setNewShot(prev => ({ ...prev, shot_no: nextShotNo }));
       setSaveStatus('saved');
       toast.success('Shot deleted');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -397,35 +426,42 @@ export default function ShotlistEditor() {
     }
   };
 
-  const addSequence = async (type: 'master_coverage' | 'overs_tows' | 'detail_coverage') => {
-    if (!project) return;
+  const addSequence = (type: 'master_coverage' | 'overs_tows' | 'detail_coverage') => {
+    setPendingPresetType(type);
+    setPresetSceneNo(newShot.scene_no);
+    setIsPresetModalOpen(true);
+  };
+
+  const confirmAddSequence = async () => {
+    if (!project || !pendingPresetType) return;
     
     let sequenceShots: Omit<Shot, 'id' | 'project_id'>[] = [];
-    const currentScene = newShot.scene_no;
+    const currentScene = presetSceneNo;
 
-    if (type === 'master_coverage') {
+    if (pendingPresetType === 'master_coverage') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot', description: 'Master Shot' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot', lens: '16mm', description: 'Establishing Master' },
         { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Close Up', description: 'Coverage A' },
         { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Close Up', description: 'Coverage B' },
       ];
-    } else if (type === 'overs_tows') {
+    } else if (pendingPresetType === 'overs_tows') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Two Shot', description: 'Wide Profile' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Two Shot', lens: '24mm', description: 'Two Shot Profile' },
         { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder', description: 'OTS Character 1' },
         { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder', description: 'OTS Character 2' },
       ];
-    } else if (type === 'detail_coverage') {
+    } else if (pendingPresetType === 'detail_coverage') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Close Up', description: 'Primary Action' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', description: 'Detail / Insert 1' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', description: 'Detail / Insert 2' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Close Up', lens: '50mm', description: 'Primary Action' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', lens: '75mm', description: 'Detail / Insert 1' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', lens: '75mm', description: 'Detail / Insert 2' },
       ];
     }
 
     try {
       setSaveStatus('saving');
-      const startNo = shots.length + 1;
+      const shotsInScene = shots.filter(s => s.scene_no === currentScene);
+      const startNo = shotsInScene.length + 1;
       const shotsToInsert = sequenceShots.map((s, idx) => ({
         ...s,
         project_id: project.id,
@@ -440,15 +476,24 @@ export default function ShotlistEditor() {
       if (error) throw error;
 
       if (data) {
-        const updatedShots = [...shots, ...data];
+        const updatedShots = [...shots, ...data].sort((a: any, b: any) => {
+          const sceneA = parseInt(a.scene_no) || 0;
+          const sceneB = parseInt(b.scene_no) || 0;
+          if (sceneA !== sceneB) return sceneA - sceneB;
+          return parseInt(a.shot_no) - parseInt(b.shot_no);
+        });
         setShots(updatedShots);
+        
+        const nextShotNo = (updatedShots.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
         setNewShot(prev => ({ 
           ...prev, 
-          shot_no: (updatedShots.length + 1).toString() 
+          shot_no: nextShotNo
         }));
         setSaveStatus('saved');
         toast.success(`Added ${data.length} shots to Scene ${currentScene}`);
         setTimeout(() => setSaveStatus('idle'), 2000);
+        setIsPresetModalOpen(false);
+        setPendingPresetType(null);
       }
     } catch (error) {
       console.error('Error adding sequence:', error);
@@ -496,28 +541,42 @@ export default function ShotlistEditor() {
 
     const items = Array.from(shots);
     const [reorderedItem] = items.splice(result.source.index, 1);
+    
+    // Update scene_no if moved between scenes
+    const destDroppableId = result.destination.droppableId;
+    const sceneMatch = destDroppableId.match(/scene-(.*)-(table|gallery)/);
+    if (sceneMatch) {
+      (reorderedItem as Shot).scene_no = sceneMatch[1];
+    }
+    
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Renumber based on new order
-    const finalItems = items.map((s, idx): Shot => {
-      const shot = Object.assign({}, s) as Shot;
-      shot.shot_no = (idx + 1).toString();
-      return shot;
+    // Renumber based on new order PER SCENE
+    const sceneCounters: Record<string, number> = {};
+    const finalItems = items.map((s): Shot => {
+      const shot = s as Shot;
+      const scene = shot.scene_no;
+      sceneCounters[scene] = (sceneCounters[scene] || 0) + 1;
+      return { ...shot, shot_no: sceneCounters[scene].toString() };
     });
     setShots(finalItems);
 
     try {
       setSaveStatus('saving');
-      // Update all shots with new sequence numbers
+      // Update all shots with new sequence numbers and potentially new scene_no
       const updates = finalItems.map(item => supabase
         .from('shots')
-        .update({ shot_no: item.shot_no })
+        .update({ 
+          shot_no: item.shot_no,
+          scene_no: item.scene_no 
+        })
         .eq('id', item.id)
       );
       
       await Promise.all(updates);
       
-      setNewShot(prev => ({ ...prev, shot_no: (finalItems.length + 1).toString() }));
+      const nextShotNo = (finalItems.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
+      setNewShot(prev => ({ ...prev, shot_no: nextShotNo }));
       setSaveStatus('saved');
       toast.success('Order saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -801,7 +860,7 @@ export default function ShotlistEditor() {
                   <Copy className="w-4 h-4 text-brand-cyan" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Master + Coverage</p>
+                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Establish</p>
                   <p className="text-[9px] text-zinc-500 font-medium">3 shots (Master, A, B)</p>
                 </div>
               </button>
@@ -813,7 +872,7 @@ export default function ShotlistEditor() {
                   <Copy className="w-4 h-4 text-brand-cyan" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Overs + Two Shot</p>
+                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Dialogue</p>
                   <p className="text-[9px] text-zinc-500 font-medium">3 shots (2S, OTS A, OTS B)</p>
                 </div>
               </button>
@@ -890,7 +949,11 @@ export default function ShotlistEditor() {
                 <select 
                   className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6" 
                   value={newShot.scene_no}
-                  onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}
+                  onChange={e => {
+                    const sceneNo = e.target.value;
+                    const nextShotNo = (shots.filter(s => s.scene_no === sceneNo).length + 1).toString();
+                    setNewShot(prev => ({ ...prev, scene_no: sceneNo, shot_no: nextShotNo }));
+                  }}
                 >
                   {OPTIONS.scene.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
                 </select>
@@ -1385,12 +1448,76 @@ export default function ShotlistEditor() {
                   >
                     Cancel
                   </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+                  </div>
+                  </form>
+                  </motion.div>
+                  </div>
+                  )}
+                  </AnimatePresence>
+
+                  {/* Preset Scene Selection Modal */}
+                  <AnimatePresence>
+                  {isPresetModalOpen && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                  <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="absolute inset-0 bg-bg/90 backdrop-blur-md"
+                  />
+                  <motion.div
+                  initial={{ opacity: 0, scale: 0.98, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98, y: 20 }}
+                  className="relative w-full max-w-md bg-zinc-900 border border-white/10 p-8 rounded-3xl shadow-3xl overflow-hidden"
+                  >
+                  <button
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
+                  >
+                  <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="mb-8 text-left">
+                  <div className="flex items-center gap-3 mb-2">
+                  <Copy className="w-6 h-6 text-brand-cyan" />
+                  <h2 className="text-2xl font-semibold text-white tracking-tight">Add Shot Preset</h2>
+                  </div>
+                  <p className="text-zinc-500 text-sm">Select which scene to add this preset to.</p>
+                  </div>
+
+                  <div className="space-y-6">
+                  <div className="space-y-2">
+                  <label className="label-micro">Destination Scene</label>
+                  <select 
+                    className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
+                    value={presetSceneNo}
+                    onChange={e => setPresetSceneNo(e.target.value)}
+                  >
+                    {OPTIONS.scene.map(o => <option key={o} value={o} className="bg-zinc-900">Scene {o}</option>)}
+                  </select>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={confirmAddSequence}
+                    className="btn-primary flex-1 py-4 font-semibold rounded-xl"
+                  >
+                    Add to Scene {presetSceneNo}
+                  </button>
+                  <button 
+                    onClick={() => setIsPresetModalOpen(false)}
+                    className="btn-outline px-8 py-4 font-semibold rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  </div>
+                  </div>
+                  </motion.div>
+                  </div>
+                  )}
+                  </AnimatePresence>
+                  </div>
+                  );
+                  }

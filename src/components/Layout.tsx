@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Mail, LogOut, ChevronDown } from 'lucide-react';
@@ -14,11 +14,32 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { name: 'Dashboard', path: '/projects', icon: LayoutDashboard },
     { name: 'Contact', path: '/contact', icon: Mail },
   ];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
+  useEffect(() => {
+    setShowUserMenu(false);
+  }, [location]);
 
   const handleLogout = async () => {
     await signOut();
@@ -62,7 +83,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="h-8 w-px bg-white/5 ml-2 hidden md:block"></div>
           
           {user ? (
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button 
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 group cursor-pointer"
