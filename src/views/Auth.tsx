@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Mail, Lock, Loader2 } from 'lucide-react';
+import { SignIn as LogIn, UserPlus, Envelope as Mail, LockKey as Lock, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import Logo from '../components/Logo';
 
 export default function Auth() {

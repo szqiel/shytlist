@@ -7,3 +7,6 @@ coverage/
 .env*
 client_secret_google.json
 OVERVIEW.md
+.impeccable
+PRODUCT.md
+DESIGN.md

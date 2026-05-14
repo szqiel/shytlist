@@ -3,24 +3,24 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
-  Trash2, 
-  GripVertical, 
+  Trash, 
+  DotsSixVertical, 
   ArrowLeft, 
-  CheckCircle2,
-  FileDown,
-  FileSpreadsheet,
-  Loader2,
+  CheckCircle,
+  FileArrowDown,
+  FileCsv,
+  CircleNotch,
   Image as ImageIcon,
   Upload,
   X,
-  LayoutGrid,
+  SquaresFour,
   List,
   Copy,
-  Edit2,
-  ChevronRight,
-  ChevronDown,
+  PencilSimple,
+  CaretRight,
+  CaretDown,
   Clock
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { 
   DragDropContext, 
   Droppable, 
@@ -958,7 +958,7 @@ export default function ShotlistEditor() {
                 onClick={() => setIsExportModalOpen(true)} 
                 className="btn-primary w-full justify-center gap-3 py-3"
               >
-                <FileDown className="w-4 h-4" />
+                <FileArrowDown className="w-4 h-4" />
                 <span>Export Settings</span>
               </button>
             </div>
@@ -1016,7 +1016,7 @@ export default function ShotlistEditor() {
                <h2 className="text-lg font-semibold text-white tracking-tight truncate max-w-[200px]">{project.title}</h2>
             </div>
             <div className="flex gap-2">
-               <button onClick={exportPDF} className="p-2 bg-zinc-900 rounded-lg border border-white/5 text-brand-yellow"><FileDown className="w-4 h-4" /></button>
+               <button onClick={exportPDF} className="p-2 bg-zinc-900 rounded-lg border border-white/5 text-brand-yellow"><FileArrowDown className="w-4 h-4" /></button>
             </div>
           </div>
 
@@ -1034,7 +1034,7 @@ export default function ShotlistEditor() {
                 onClick={() => setViewMode('gallery')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}
               >
-                <LayoutGrid className="w-4 h-4" />
+                <SquaresFour className="w-4 h-4" />
                 Gallery View
               </button>
             </div>
@@ -1149,7 +1149,7 @@ export default function ShotlistEditor() {
                         className="flex items-center gap-4 group/scene w-full text-left"
                       >
                         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 text-zinc-500 group-hover/scene:border-brand-cyan/50 group-hover/scene:text-brand-cyan transition-all">
-                          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          {isCollapsed ? <CaretRight className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
                         </div>
                         <div>
                           <h3 className="text-xl font-bold text-white tracking-tight">Scene {sceneNo}</h3>
@@ -1202,7 +1202,7 @@ export default function ShotlistEditor() {
                                               >
                                                 <td className="px-4 py-5">
                                                   <div {...provided.dragHandleProps} className="text-zinc-700 group-hover:text-zinc-500 transition-colors cursor-grab active:cursor-grabbing text-center">
-                                                    <GripVertical className="w-4 h-4 mx-auto" />
+                                                    <DotsSixVertical className="w-4 h-4 mx-auto" />
                                                   </div>
                                                 </td>
                                                 <td className="px-4 py-5 text-zinc-300 text-sm font-semibold tracking-tighter">{shot.shot_no}</td>
@@ -1247,13 +1247,13 @@ export default function ShotlistEditor() {
                                                       onClick={() => setEditingShot(shot)}
                                                       className="text-zinc-800 hover:text-brand-cyan opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
                                                     >
-                                                      <Edit2 className="w-4 h-4" />
+                                                      <PencilSimple className="w-4 h-4" />
                                                     </button>
                                                     <button 
                                                       onClick={() => deleteShot(shot.id)}
                                                       className="text-zinc-800 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
                                                     >
-                                                      <Trash2 className="w-4 h-4" />
+                                                      <Trash className="w-4 h-4" />
                                                     </button>
                                                   </div>
                                                 </td>
@@ -1326,7 +1326,7 @@ export default function ShotlistEditor() {
                                                 {...provided.dragHandleProps}
                                                 className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
                                               >
-                                                <GripVertical className="w-3 h-3" />
+                                                <DotsSixVertical className="w-3 h-3" />
                                               </div>
                                             </div>
 
@@ -1342,13 +1342,13 @@ export default function ShotlistEditor() {
                                                     onClick={() => setEditingShot(shot)}
                                                     className="p-1.5 text-zinc-700 hover:text-brand-cyan transition-colors"
                                                   >
-                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                    <PencilSimple className="w-3.5 h-3.5" />
                                                   </button>
                                                   <button 
                                                     onClick={() => deleteShot(shot.id)}
                                                     className="p-1.5 text-zinc-700 hover:text-red-400 transition-colors"
                                                   >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash className="w-3.5 h-3.5" />
                                                   </button>
                                                 </div>
                                               </div>
@@ -1426,7 +1426,7 @@ export default function ShotlistEditor() {
                 {ALL_COLUMNS.map(col => (
                   <label key={col} className="flex items-center gap-3 cursor-pointer group">
                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${exportColumns.includes(col) ? 'bg-brand-cyan border-brand-cyan' : 'border-zinc-700 group-hover:border-zinc-500'}`}>
-                      {exportColumns.includes(col) && <CheckCircle2 className="w-3.5 h-3.5 text-black" />}
+                      {exportColumns.includes(col) && <CheckCircle className="w-3.5 h-3.5 text-black" />}
                     </div>
                     <span className="text-sm font-medium text-zinc-300">{col}</span>
                     <input 
@@ -1448,14 +1448,14 @@ export default function ShotlistEditor() {
                   onClick={exportPDF} 
                   className="btn-primary flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2"
                 >
-                  <FileDown className="w-4 h-4" />
+                  <FileArrowDown className="w-4 h-4" />
                   PDF
                 </button>
                 <button 
                   onClick={exportCSV} 
                   className="btn-outline flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2"
                 >
-                  <FileSpreadsheet className="w-4 h-4 text-brand-yellow" />
+                  <FileCsv className="w-4 h-4 text-brand-yellow" />
                   CSV
                 </button>
               </div>
@@ -1490,7 +1490,7 @@ export default function ShotlistEditor() {
 
               <div className="mb-10 text-left">
                 <div className="flex items-center gap-3 mb-2">
-                  <Edit2 className="w-6 h-6 text-brand-cyan" />
+                  <PencilSimple className="w-6 h-6 text-brand-cyan" />
                   <h2 className="text-3xl font-semibold text-white tracking-tight">Edit Shot #{editingShot.shot_no}</h2>
                 </div>
                 <p className="text-zinc-500 text-sm">Update shot details for Scene {editingShot.scene_no}.</p>

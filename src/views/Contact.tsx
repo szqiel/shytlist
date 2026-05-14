@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Mail } from 'lucide-react';
+import { Envelope as Mail } from '@phosphor-icons/react';
 
 export default function Contact() {
   return (

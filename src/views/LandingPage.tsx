@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@phosphor-icons/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Logo from '../components/Logo';
@@ -47,46 +47,102 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] text-center pt-20">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-        className="mb-12 relative group"
-      >
-        <div className="absolute inset-0 bg-brand-cyan/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-        <Logo size="xl" className="relative z-10" />
-      </motion.div>
+    <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] pt-12 md:pt-20 gap-16 md:gap-8 max-w-7xl mx-auto w-full">
+      
+      {/* Left Content */}
+      <div className="flex-1 w-full max-w-2xl text-left relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-8"
+        >
+          <h1 className="text-6xl md:text-[80px] lg:text-[100px] font-semibold tracking-tighter mb-6 leading-[0.85] text-white">
+            Lazy making<br />
+            shotlist?<br />
+            <span className="text-brand-yellow block mt-4">Just Shytlist!</span>
+          </h1>
+        </motion.div>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-        className="text-7xl md:text-[100px] font-semibold tracking-tight mb-8 leading-[0.9] text-white"
-      >
-        Lazy making shotlist?<br />
-        <span className="text-brand-yellow">Just Shytlist!</span>
-      </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 1 }}
+          className="text-zinc-400 text-lg max-w-[45ch] mb-12 font-medium leading-relaxed"
+        >
+          Shotlist tool designed specifically for Directors of Photography and filmmakers who demand speed and perfection.
+        </motion.p>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4, duration: 1 }}
-        className="text-zinc-400 max-w-xl text-lg mb-16 font-medium leading-relaxed"
-      >
-        A professional shotlist builder designed for Directors of Photography and filmmakers.
-      </motion.p>
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ 
+            delay: 0.4, 
+            type: "spring", stiffness: 100, damping: 20
+          }}
+          onClick={() => setIsModalOpen(true)}
+          className="btn-primary py-5 px-10 text-base font-semibold shadow-[0_0_40px_-10px_var(--color-brand-cyan)] hover:shadow-[0_0_60px_-10px_var(--color-brand-cyan)] rounded-xl group relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+          <Plus className="w-5 h-5 -ml-2 relative z-10" />
+          <span className="relative z-10">Create Project</span>
+        </motion.button>
+      </div>
 
-      <motion.button
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
-        onClick={() => setIsModalOpen(true)}
-        className="btn-primary py-5 px-16 text-base font-semibold shadow-xl shadow-brand-cyan/10 hover:shadow-brand-cyan/20 rounded-xl"
-      >
-        <Plus className="w-5 h-5 -ml-2" />
-        Create Project
-      </motion.button>
+      {/* Right Content - Abstract Hero Asset */}
+      <div className="flex-1 w-full hidden md:flex justify-end relative h-[500px]">
+        <motion.div
+          animate={{ 
+            y: [-10, 10, -10],
+            rotate: [-1, 1, -1]
+          }}
+          transition={{ 
+            duration: 8, 
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="relative w-full max-w-md h-full"
+        >
+          {/* Main Card */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-96 glass rounded-3xl p-6 flex flex-col justify-between z-20 shadow-2xl">
+            <div className="space-y-6">
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center shadow-inner">
+                <Logo size="sm" />
+              </div>
+              <div className="space-y-2">
+                <div className="w-32 h-2.5 bg-zinc-800 rounded-full"></div>
+                <div className="w-20 h-2 bg-zinc-800/50 rounded-full"></div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="w-full h-14 bg-zinc-900/50 rounded-2xl border border-white/5 flex items-center px-4 relative overflow-hidden">
+                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]" style={{ animationDelay: `${i * 0.2}s` }} />
+                   <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center mr-4 shadow-inner">
+                      <div className="w-3 h-3 rounded-full bg-brand-cyan/20 border border-brand-cyan/50"></div>
+                   </div>
+                   <div className="flex-1 space-y-2">
+                     <div className="w-1/2 h-1.5 bg-zinc-700 rounded-full"></div>
+                     <div className="w-1/3 h-1.5 bg-zinc-800 rounded-full"></div>
+                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Decorative Layers */}
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-white/5 rounded-full border-dashed opacity-50 pointer-events-none"
+          />
+          <div className="absolute top-1/4 -right-12 w-64 h-64 bg-brand-cyan/20 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-1/4 -left-12 w-64 h-64 bg-brand-yellow/10 blur-[120px] rounded-full pointer-events-none" />
+        </motion.div>
+      </div>
 
       {/* Modal */}
       <AnimatePresence>
@@ -100,14 +156,15 @@ export default function LandingPage() {
               className="absolute inset-0 bg-bg/90 backdrop-blur-md"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 20 }}
-              className="relative w-full max-w-lg bg-zinc-900 border border-white/10 p-12 rounded-3xl shadow-3xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20 }}
+              className="relative w-full max-w-lg glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
             >
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
+                className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -125,7 +182,7 @@ export default function LandingPage() {
                     required
                     type="text"
                     placeholder="e.g. THE NEON VELVET"
-                    className="input-field"
+                    className="input-field bg-black/50"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                   />
@@ -136,12 +193,12 @@ export default function LandingPage() {
                     required
                     type="text"
                     placeholder="e.g. Greta Gerwig"
-                    className="input-field"
+                    className="input-field bg-black/50"
                     value={director}
                     onChange={(e) => setDirector(e.target.value)}
                   />
                 </div>
-                <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base">
+                <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base shadow-lg shadow-brand-cyan/20">
                   Create Project
                 </button>
               </form>

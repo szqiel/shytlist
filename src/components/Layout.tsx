@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Mail, LogOut, ChevronDown } from 'lucide-react';
+import { SquaresFour, Envelope, SignOut, CaretDown } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 import Logo from './Logo';
 
@@ -17,8 +17,8 @@ export default function Layout({ children }: LayoutProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
-    { name: 'Dashboard', path: '/projects', icon: LayoutDashboard },
-    { name: 'Contact', path: '/contact', icon: Mail },
+    { name: 'Dashboard', path: '/projects', icon: SquaresFour },
+    { name: 'Contact', path: '/contact', icon: Envelope },
   ];
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="w-10 h-10 rounded-xl border border-brand-cyan/30 bg-zinc-900 flex items-center justify-center transition-all group-hover:border-brand-cyan">
                    <span className="text-xs font-semibold text-zinc-100 uppercase">{getInitials(user.email)}</span>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                <CaretDown weight="bold" className={`w-3 h-3 text-zinc-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -110,7 +110,7 @@ export default function Layout({ children }: LayoutProps) {
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <SignOut className="w-4 h-4" />
                       Logout
                     </button>
                   </motion.div>
