@@ -1,50 +1,25 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Plus, 
-  Trash, 
-  DotsSixVertical, 
-  ArrowLeft, 
-  CheckCircle,
-  FileArrowDown,
-  FileCsv,
-  CircleNotch,
-  Image as ImageIcon,
-  Upload,
-  X,
-  SquaresFour,
-  List,
-  Copy,
-  PencilSimple,
-  CaretRight,
-  CaretDown,
-  Clock
+  Plus, Trash, DotsSixVertical, ArrowLeft, CheckCircle,
+  FileArrowDown, FileCsv, Image as ImageIcon, Upload, X,
+  SquaresFour, List, Copy, PencilSimple, CaretRight, CaretDown, Clock
 } from '@phosphor-icons/react';
-import { 
-  DragDropContext, 
-  Droppable, 
-  Draggable,
-  DropResult 
-} from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 const DraggableAny = Draggable as any;
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import imageCompression from 'browser-image-compression';
-import { useMemo } from 'react';
 import { Project, Shot } from '../types';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { useShotlist } from '../lib/useShotlist';
 
-
-// Refined production time estimate (in minutes per shot)
-// Uses a simple additive model: base + size modifier + movement setup
 const calculateShotDuration = (shot: Shot): number => {
-  // Base: tripod placement, framing, a couple of takes
   let minutes = 5;
-
-  // Shot size adjustments
   const size = shot.shot_size;
   if (["Extreme Wide Shot", "Wide Shot", "Group Shot"].includes(size)) minutes += 3;
   else if (["Full Shot", "Cowboy Shot", "Medium Full Shot"].includes(size)) minutes += 2;
@@ -53,7 +28,6 @@ const calculateShotDuration = (shot: Shot): number => {
   else if (["Close Up"].includes(size)) minutes += 0;
   else if (["Extreme Close Up", "Insert"].includes(size)) minutes -= 1;
 
-  // Movement adds gear rigging / rehearsal time (additive, not multiplicative)
   const movement = shot.movement;
   if (movement === "Static" || !movement) { /* no extra */ }
   else if (["Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Zoom In", "Zoom Out"].includes(movement)) minutes += 2;
@@ -65,7 +39,6 @@ const calculateShotDuration = (shot: Shot): number => {
   return Math.max(3, minutes);
 };
 
-// Per-take duration in seconds based on shot size (shared between shooting & film duration estimates)
 const SIZE_TAKE_DURATION: Record<string, number> = {
   "Extreme Wide Shot": 45, "Wide Shot": 45, "Group Shot": 45,
   "Full Shot": 30, "Cowboy Shot": 30, "Medium Full Shot": 30,
@@ -75,10 +48,7 @@ const SIZE_TAKE_DURATION: Record<string, number> = {
   "Extreme Close Up": 8, "Insert": 8,
 };
 
-// Shooting time estimate (in minutes per shot)
-// Models: take_duration × num_takes + playback review
 const calculateShootingDuration = (shot: Shot): number => {
-  // Estimated number of takes based on movement complexity
   const MOVEMENT_TAKES: Record<string, number> = {
     "Static": 3,
     "Pan Left": 3, "Pan Right": 3, "Tilt Up": 3, "Tilt Down": 3,
@@ -91,7 +61,6 @@ const calculateShootingDuration = (shot: Shot): number => {
     "Drone / Aerial": 5,
   };
 
-  // Extra takes for difficult angles
   const ANGLE_EXTRA: Record<string, number> = {
     "Eye Level": 0, "Shoulder Level": 0,
     "High Angle": 1, "Low Angle": 1, "Hip Level": 1,
@@ -104,12 +73,9 @@ const calculateShootingDuration = (shot: Shot): number => {
   const angleExtra = ANGLE_EXTRA[shot.angle] || 0;
   const numTakes = baseTakes + angleExtra;
 
-  // Total shooting = (take_duration × takes) converted to minutes + 1 min playback
   return Math.ceil((takeDuration * numTakes) / 60) + 1;
 };
 
-// Estimated final film/video runtime in seconds
-// Each shot contributes ~70% of its take duration (editor trimming)
 const estimateFilmDuration = (shot: Shot): number => {
   const takeDuration = SIZE_TAKE_DURATION[shot.shot_size] || 20;
   return Math.round(takeDuration * 0.7);
@@ -154,11 +120,43 @@ const OPTIONS = {
   framing: ['Standard', 'Wide', 'Close', 'Rule of Thirds', 'Symmetric', 'Leading Lines'],
 };
 
+const useDraggableInPortal = () => {
+  const self = useRef<any>({}).current;
+
+  useEffect(() => {
+    const div = document.createElement('div');
+    div.style.position = 'absolute';
+    div.style.pointerEvents = 'none';
+    div.style.top = '0';
+    div.style.left = '0';
+    div.style.width = '100%';
+    div.style.height = '100%';
+    div.style.zIndex = '99999';
+    self.elt = div;
+    document.body.appendChild(div);
+    return () => {
+      if (self.elt && document.body.contains(self.elt)) {
+        document.body.removeChild(self.elt);
+      }
+    };
+  }, [self]);
+
+  return (render: any) => (provided: any, snapshot: any) => {
+    const element = render(provided, snapshot);
+    if (snapshot.isDragging) {
+      return createPortal(element, self.elt);
+    }
+    return element;
+  };
+};
+
 export default function ShotlistEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { shots, addShot: addShotHook, updateShot: updateShotHook, deleteShot: deleteShotHook, reorderShots: reorderShotsHook } = useShotlist(id);
+  const renderDraggable = useDraggableInPortal();
+  
   const [project, setProject] = useState<Project | null>(null);
-  const [shots, setShots] = useState<Shot[]>([]);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [tempName, setTempName] = useState('');
   const [tempDirector, setTempDirector] = useState('');
@@ -168,20 +166,36 @@ export default function ShotlistEditor() {
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [collapsedScenes, setCollapsedScenes] = useState<Record<string, boolean>>({});
+  const [descriptionError, setDescriptionError] = useState(false);
   
-  const ALL_COLUMNS = ['Shot Size', 'Lens', 'Movement', 'Angle', 'Framing', 'Description'];
+  const ALL_COLUMNS = ['Storyboard', 'Shot Size', 'Lens', 'Movement', 'Angle', 'Framing', 'Description'];
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<string[]>(ALL_COLUMNS);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'detail_coverage' | null>(null);
   const [presetSceneNo, setPresetSceneNo] = useState('1');
 
-
+  // Load project
+  useEffect(() => {
+    const loadProject = async () => {
+      if (!id) return;
+      const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();
+      if (error || !data) {
+        toast.error('Project not found');
+        navigate('/projects');
+        return;
+      }
+      setProject(data);
+      setTempName(data.title || '');
+      setTempDirector(data.director || '');
+      setTempDp(data.dp || '');
+    };
+    loadProject();
+  }, [id, navigate]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           const form = (e.target as HTMLElement).closest('form');
@@ -189,27 +203,10 @@ export default function ShotlistEditor() {
         }
         return;
       }
-
-      if (e.key.toLowerCase() === 'n') {
-        e.preventDefault();
-        const firstInput = document.querySelector('input, select') as HTMLElement;
-        firstInput?.focus();
-      }
-
-      if (e.key.toLowerCase() === 's' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        // saveProjectInfo is not in scope here perfectly without adding it to deps or moving this down, 
-        // but it was like this in the previous code so we'll keep the structure.
-        // Actually, let's just trigger a click on the save button to avoid dependency issues if needed, or leave it.
-        // The original code had it.
-        saveProjectInfo();
-      }
-
-      if (e.key === 'Escape') {
-        setEditingShot(null);
-      }
+      if (e.key.toLowerCase() === 'n') { e.preventDefault(); (document.querySelector('input, select') as HTMLElement)?.focus(); }
+      if (e.key.toLowerCase() === 's' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveProjectInfo(); }
+      if (e.key === 'Escape') { setEditingShot(null); }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [project, tempName, tempDirector, tempDp]);
@@ -229,29 +226,22 @@ export default function ShotlistEditor() {
   [groupedShots]);
 
   const productionMetrics = useMemo(() => {
-    // 3-layer estimate: Shooting + Setups + Scene Transitions
     const shootingMinutes = shots.reduce((sum, shot) => sum + calculateShootingDuration(shot), 0);
     const setupMinutes = shots.reduce((sum, shot) => sum + calculateShotDuration(shot), 0);
     const sceneCount = sceneNumbers.length;
-    const transitionMinutes = Math.max(0, (sceneCount - 1) * 10); // 10 mins per scene change
+    const transitionMinutes = Math.max(0, (sceneCount - 1) * 10);
     const totalMinutes = shootingMinutes + setupMinutes + transitionMinutes;
-    
-    // Estimated film runtime (sum of per-shot screen time after editor trimming)
     const filmSeconds = shots.reduce((sum, shot) => sum + estimateFilmDuration(shot), 0);
-    
     const formatMin = (m: number) => {
       const h = Math.floor(m / 60);
       const r = m % 60;
-      if (h > 0) return `${h}h ${r}m`;
-      return `${r}m`;
+      return h > 0 ? `${h}h ${r}m` : `${r}m`;
     };
-    
     const formatFilm = (totalSec: number) => {
       const m = Math.floor(totalSec / 60);
       const s = totalSec % 60;
       return `${m}:${s.toString().padStart(2, '0')}`;
     };
-
     return {
       shootingDuration: formatMin(shootingMinutes),
       setupDuration: formatMin(setupMinutes),
@@ -266,265 +256,94 @@ export default function ShotlistEditor() {
     setCollapsedScenes(prev => ({ ...prev, [sceneNo]: !prev[sceneNo] }));
   };
 
-  // Load project and shots
-  useEffect(() => {
-    const loadData = async () => {
-      if (!id) return;
-      try {
-        // Fetch project
-        const { data: projectData, error: projectError } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (projectError || !projectData) {
-          toast.error('Project not found');
-          navigate('/projects');
-          return;
-        }
-
-        setProject(projectData);
-        setTempName(projectData.title || '');
-        setTempDirector(projectData.director || '');
-        setTempDp(projectData.dp || '');
-
-        // Fetch shots
-        const { data: shotsData, error: shotsError } = await supabase
-          .from('shots')
-          .select('*')
-          .eq('project_id', id);
-
-        if (shotsError) throw shotsError;
-        
-        const sortedShots = (shotsData || []).sort((a: any, b: any) => {
-          const sceneA = parseInt(a.scene_no) || 0;
-          const sceneB = parseInt(b.scene_no) || 0;
-          if (sceneA !== sceneB) return sceneA - sceneB;
-          return parseInt(a.shot_no) - parseInt(b.shot_no);
-        });
-        
-        setShots(sortedShots);
-
-        // Set next shot number for the current scene (default Scene 1)
-        const scene1Shots = sortedShots.filter(s => s.scene_no === '1');
-        const nextNo = (scene1Shots.length + 1).toString();
-        setNewShot(prev => ({ ...prev, shot_no: nextNo, scene_no: '1' }));
-      } catch (error) {
-        console.error('Error loading project data:', error);
-        toast.error('Failed to load project details');
-      }
-    };
-
-    loadData();
-  }, [id, navigate]);
-
   const saveProjectInfo = async () => {
     if (!project || !tempName || !tempDirector || !tempDp) return;
     try {
       setSaveStatus('saving');
-      const { error } = await supabase
-        .from('projects')
-        .update({ title: tempName, director: tempDirector, dp: tempDp })
-        .eq('id', project.id);
-
+      const { error } = await supabase.from('projects').update({ title: tempName, director: tempDirector, dp: tempDp }).eq('id', project.id);
       if (error) throw error;
-      
       setProject({ ...project, title: tempName, director: tempDirector, dp: tempDp });
       setIsEditingInfo(false);
       setSaveStatus('saved');
-      toast.success('Project details updated');
+      toast.success('Project updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error saving project info:', error);
-      toast.error('Failed to save project changes');
-    }
+    } catch (error) { toast.error('Failed to update project'); }
   };
 
   const addShot = async (e: FormEvent) => {
     e.preventDefault();
     if (!project) return;
-
+    if (!newShot.description.trim()) {
+      setDescriptionError(true);
+      toast.error('Description is required');
+      return;
+    }
+    setDescriptionError(false);
     try {
       setSaveStatus('saving');
-      const { data, error } = await supabase
-        .from('shots')
-        .insert([{ ...newShot, project_id: project.id }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        const updatedShots = [...shots, data].sort((a: any, b: any) => {
-          const sceneA = parseInt(a.scene_no) || 0;
-          const sceneB = parseInt(b.scene_no) || 0;
-          if (sceneA !== sceneB) return sceneA - sceneB;
-          return parseInt(a.shot_no) - parseInt(b.shot_no);
-        });
-        setShots(updatedShots);
-        
-        const nextSceneNo = newShot.scene_no;
-        const nextShotNo = (updatedShots.filter(s => s.scene_no === nextSceneNo).length + 1).toString();
-        
-        setNewShot({ 
-          ...INITIAL_SHOT_STATE, 
-          shot_no: nextShotNo,
-          scene_no: nextSceneNo
-        });
-        setSaveStatus('saved');
-        toast.success('Shot added');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-      }
-    } catch (error) {
-      console.error('Error adding shot:', error);
-      toast.error('Failed to add shot');
-    }
+      await addShotHook(newShot);
+      const nextSceneNo = newShot.scene_no;
+      const nextShotNo = (shots.filter(s => s.scene_no === nextSceneNo).length + 2).toString();
+      setNewShot({ ...INITIAL_SHOT_STATE, shot_no: nextShotNo, scene_no: nextSceneNo });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) { toast.error('Failed to add shot'); }
   };
 
   const updateShot = async (e: FormEvent) => {
     e.preventDefault();
     if (!editingShot) return;
-
     try {
       setSaveStatus('saving');
-      const { error } = await supabase
-        .from('shots')
-        .update(editingShot)
-        .eq('id', editingShot.id);
-
-      if (error) throw error;
-
-      setShots(shots.map(s => s.id === editingShot.id ? editingShot : s));
+      await updateShotHook(editingShot);
       setEditingShot(null);
       setSaveStatus('saved');
-      toast.success('Shot updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error updating shot:', error);
-      toast.error('Failed to update shot');
-    }
+    } catch (error) { toast.error('Failed to update shot'); }
   };
 
   const deleteShot = async (shotId: string) => {
     if (!project) return;
     try {
       setSaveStatus('saving');
-      const { error } = await supabase
-        .from('shots')
-        .delete()
-        .eq('id', shotId);
-
-      if (error) throw error;
-
-      // Local update and renumbering per scene
       const deletedShot = shots.find(s => s.id === shotId);
-      const affectedSceneNo = deletedShot?.scene_no;
-      
-      // Garbage Collection: Delete old storyboard file if exists
       if (deletedShot?.storyboard_url) {
         try {
           const urlObj = new URL(deletedShot.storyboard_url);
           const pathInBucket = urlObj.pathname.split('/public/storyboards/')[1];
-          if (pathInBucket) {
-            await supabase.storage.from('storyboards').remove([pathInBucket]);
-          }
-        } catch (e) {
-          console.error('Failed to delete old storyboard', e);
-        }
+          if (pathInBucket) await supabase.storage.from('storyboards').remove([pathInBucket]);
+        } catch (e) { console.error('Failed to delete old storyboard', e); }
       }
-      
-      const remainingShots = shots.filter(s => s.id !== shotId);
-      
-      // Update sequence in DB only for the affected scene
-      const sceneShots = remainingShots.filter(s => s.scene_no === affectedSceneNo);
-      const renumberedSceneShots = sceneShots.map((s, idx): Shot => ({
-        ...s,
-        shot_no: (idx + 1).toString()
-      }));
-
-      // Merge back into all shots
-      const finalShots = remainingShots.map(s => {
-        const updated = renumberedSceneShots.find(us => us.id === s.id);
-        return updated || s;
-      });
-
-      // Update sequence in DB
-      const updates = renumberedSceneShots.map(shot => supabase
-        .from('shots')
-        .update({ shot_no: shot.shot_no })
-        .eq('id', shot.id)
-      );
-      await Promise.all(updates);
-
-      setShots(finalShots);
-      const nextShotNo = (finalShots.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
-      setNewShot(prev => ({ ...prev, shot_no: nextShotNo }));
+      await deleteShotHook(shotId);
       setSaveStatus('saved');
-      toast.success('Shot deleted');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error deleting shot:', error);
-      toast.error('Failed to delete shot');
-    }
+    } catch (error) { toast.error('Failed to delete shot'); }
   };
 
   const handleImageUpload = async (shotId: string, file: File) => {
     try {
       setSaveStatus('saving');
-      
-      // Client-side compression
-      const options = {
-        maxSizeMB: 0.3,
-        maxWidthOrHeight: 1080,
-        useWebWorker: true,
-        fileType: file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'image/jpeg' : 'image/webp'
-      };
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
+      const filePath = `storyboards/${shotId}_${Math.random()}.webp`;
 
-      const fileExt = compressedFile.name.split('.').pop() || 'webp';
-      const fileName = `${shotId}_${Math.random()}.${fileExt}`;
-      const filePath = `storyboards/${fileName}`;
-
-      // Garbage Collection: delete existing storyboard first
       const currentShot = shots.find(s => s.id === shotId);
       if (currentShot?.storyboard_url) {
         try {
           const urlObj = new URL(currentShot.storyboard_url);
           const pathInBucket = urlObj.pathname.split('/public/storyboards/')[1];
-          if (pathInBucket) {
-            await supabase.storage.from('storyboards').remove([pathInBucket]);
-          }
-        } catch (e) {
-          console.error('Failed to delete old storyboard', e);
-        }
+          if (pathInBucket) await supabase.storage.from('storyboards').remove([pathInBucket]);
+        } catch (e) { console.error('Failed to delete old storyboard', e); }
       }
 
-      const { error: uploadError } = await supabase.storage
-        .from('storyboards')
-        .upload(filePath, compressedFile);
-
+      const { error: uploadError } = await supabase.storage.from('storyboards').upload(filePath, compressedFile);
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('storyboards')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('shots')
-        .update({ storyboard_url: publicUrl })
-        .eq('id', shotId);
-
-      if (updateError) throw updateError;
-
-      setShots(shots.map(s => s.id === shotId ? { ...s, storyboard_url: publicUrl } : s));
+      const { data: { publicUrl } } = supabase.storage.from('storyboards').getPublicUrl(filePath);
+      await supabase.from('shots').update({ storyboard_url: publicUrl }).eq('id', shotId);
       setSaveStatus('saved');
       toast.success('Storyboard updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-    }
+    } catch (error) { toast.error('Upload failed'); }
   };
 
   const addSequence = (type: 'master_coverage' | 'overs_tows' | 'detail_coverage') => {
@@ -535,10 +354,8 @@ export default function ShotlistEditor() {
 
   const confirmAddSequence = async () => {
     if (!project || !pendingPresetType) return;
-    
     let sequenceShots: Omit<Shot, 'id' | 'project_id'>[] = [];
     const currentScene = presetSceneNo;
-
     if (pendingPresetType === 'master_coverage') {
       sequenceShots = [
         { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot', lens: '16mm', description: 'Establishing Master' },
@@ -561,244 +378,326 @@ export default function ShotlistEditor() {
 
     try {
       setSaveStatus('saving');
-      const shotsInScene = shots.filter(s => s.scene_no === currentScene);
-      const startNo = shotsInScene.length + 1;
-      const shotsToInsert = sequenceShots.map((s, idx) => ({
-        ...s,
-        project_id: project.id,
-        shot_no: (startNo + idx).toString()
-      }));
-
-      const { data, error } = await supabase
-        .from('shots')
-        .insert(shotsToInsert)
-        .select();
-
-      if (error) throw error;
-
-      if (data) {
-        const updatedShots = [...shots, ...data].sort((a: any, b: any) => {
-          const sceneA = parseInt(a.scene_no) || 0;
-          const sceneB = parseInt(b.scene_no) || 0;
-          if (sceneA !== sceneB) return sceneA - sceneB;
-          return parseInt(a.shot_no) - parseInt(b.shot_no);
-        });
-        setShots(updatedShots);
-        
-        const nextShotNo = (updatedShots.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
-        setNewShot(prev => ({ 
-          ...prev, 
-          shot_no: nextShotNo
-        }));
-        setSaveStatus('saved');
-        toast.success(`Added ${data.length} shots to Scene ${currentScene}`);
-        setTimeout(() => setSaveStatus('idle'), 2000);
-        setIsPresetModalOpen(false);
-        setPendingPresetType(null);
+      const startNo = shots.filter(s => s.scene_no === currentScene).length + 1;
+      for (let i = 0; i < sequenceShots.length; i++) {
+        await addShotHook({ ...sequenceShots[i], shot_no: (startNo + i).toString() });
       }
-    } catch (error) {
-      console.error('Error adding sequence:', error);
-      toast.error('Failed to add shot sequence');
-    }
+      setSaveStatus('saved');
+      toast.success('Sequence added');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      setIsPresetModalOpen(false);
+    } catch (error) { toast.error('Failed to add sequence'); }
   };
 
   const handleLogoUpload = async (file: File) => {
     if (!project) return;
     try {
       setSaveStatus('saving');
-      
-      // Client-side compression
-      const options = {
-        maxSizeMB: 0.3,
-        maxWidthOrHeight: 1080,
-        useWebWorker: true,
-        fileType: file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'image/jpeg' : 'image/webp'
-      };
+      const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
+      const filePath = `logos/${project.id}_${Math.random()}.webp`;
 
-      const fileExt = compressedFile.name.split('.').pop() || 'webp';
-      const fileName = `${project.id}_${Math.random()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-
-      // Garbage Collection: delete existing logo first
       if (project.company_logo_url) {
         try {
           const urlObj = new URL(project.company_logo_url);
           const pathInBucket = urlObj.pathname.split('/public/logos/')[1];
-          if (pathInBucket) {
-            await supabase.storage.from('logos').remove([pathInBucket]);
-          }
-        } catch (e) {
-          console.error('Failed to delete old logo', e);
-        }
+          if (pathInBucket) await supabase.storage.from('logos').remove([pathInBucket]);
+        } catch (e) { console.error('Failed to delete old logo', e); }
       }
 
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, compressedFile);
-
+      const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update({ company_logo_url: publicUrl })
-        .eq('id', project.id);
-
-      if (updateError) throw updateError;
-
+      const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath);
+      await supabase.from('projects').update({ company_logo_url: publicUrl }).eq('id', project.id);
       setProject({ ...project, company_logo_url: publicUrl });
       setSaveStatus('saved');
-      toast.success('Production logo updated');
+      toast.success('Logo updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast.error('Failed to upload logo');
-    }
+    } catch (error) { toast.error('Logo upload failed'); }
   };
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !project) return;
 
-    const items = Array.from(shots);
-    const [reorderedItem] = items.splice(result.source.index, 1);
+    const { source, destination } = result;
     
-    // Update scene_no if moved between scenes
-    const destDroppableId = result.destination.droppableId;
-    const sceneMatch = destDroppableId.match(/scene-(.*)-(table|gallery)/);
-    if (sceneMatch) {
-      (reorderedItem as Shot).scene_no = sceneMatch[1];
-    }
+    const sourceMatch = source.droppableId.match(/scene-(.*)-(table|gallery)/);
+    const destMatch = destination.droppableId.match(/scene-(.*)-(table|gallery)/);
     
-    items.splice(result.destination.index, 0, reorderedItem);
+    if (!sourceMatch || !destMatch) return;
+    
+    const sourceSceneNo = sourceMatch[1];
+    const destSceneNo = destMatch[1];
 
-    // Renumber based on new order PER SCENE
-    const sceneCounters: Record<string, number> = {};
-    const finalItems = items.map((s): Shot => {
-      const shot = s as Shot;
-      const scene = shot.scene_no;
-      sceneCounters[scene] = (sceneCounters[scene] || 0) + 1;
-      return { ...shot, shot_no: sceneCounters[scene].toString() };
+    const newGroupedShots = { ...groupedShots };
+    const sourceShots = Array.from(newGroupedShots[sourceSceneNo] || []) as Shot[];
+    const destShots = sourceSceneNo === destSceneNo ? sourceShots : Array.from(newGroupedShots[destSceneNo] || []) as Shot[];
+
+    const [reorderedItem] = sourceShots.splice(source.index, 1);
+    reorderedItem.scene_no = destSceneNo;
+    
+    destShots.splice(destination.index, 0, reorderedItem);
+
+    const finalItems: Shot[] = [];
+    sceneNumbers.forEach(sceneNo => {
+      const sceneArray = sceneNo === sourceSceneNo ? sourceShots : 
+                         sceneNo === destSceneNo ? destShots : 
+                         newGroupedShots[sceneNo] || [];
+                         
+      sceneArray.forEach((shot, idx) => {
+         finalItems.push({ ...shot, shot_no: (idx + 1).toString(), scene_no: sceneNo });
+      });
     });
-    setShots(finalItems);
 
     try {
       setSaveStatus('saving');
-      // Update all shots with new sequence numbers and potentially new scene_no
-      const updates = finalItems.map(item => supabase
-        .from('shots')
-        .update({ 
-          shot_no: item.shot_no,
-          scene_no: item.scene_no 
-        })
-        .eq('id', item.id)
-      );
-      
-      await Promise.all(updates);
-      
-      const nextShotNo = (finalItems.filter(s => s.scene_no === newShot.scene_no).length + 1).toString();
-      setNewShot(prev => ({ ...prev, shot_no: nextShotNo }));
+      await reorderShotsHook(finalItems);
       setSaveStatus('saved');
-      toast.success('Order saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Error saving reorder:', error);
-      toast.error('Failed to save shot order');
-    }
+    } catch (error) { toast.error('Reorder failed'); }
   };
 
   const exportCSV = () => {
     if (!project) return;
-    const baseHeaders = ['No', 'Scene'];
-    const activeHeaders = exportColumns;
-    const headers = [...baseHeaders, ...activeHeaders];
-    
+    const headers = ['No', 'Scene', ...exportColumns];
     const rows = shots.map(s => {
       const row = [s.shot_no, s.scene_no];
-      if (activeHeaders.includes('Shot Size')) row.push(s.shot_size);
-      if (activeHeaders.includes('Lens')) row.push(s.lens);
-      if (activeHeaders.includes('Movement')) row.push(s.movement);
-      if (activeHeaders.includes('Angle')) row.push(s.angle);
-      if (activeHeaders.includes('Framing')) row.push(s.framing);
-      if (activeHeaders.includes('Description')) row.push(`"${s.description.replace(/"/g, '""')}"`);
+      exportColumns.forEach(col => {
+        if (col === 'Storyboard') row.push(s.storyboard_url ? `"${s.storyboard_url.replace(/"/g, '""')}"` : '');
+        if (col === 'Shot Size') row.push(s.shot_size);
+        if (col === 'Lens') row.push(s.lens);
+        if (col === 'Movement') row.push(s.movement);
+        if (col === 'Angle') row.push(s.angle);
+        if (col === 'Framing') row.push(s.framing);
+        if (col === 'Description') row.push(`"${s.description.replace(/"/g, '""')}"`);
+      });
       return row;
     });
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${project.title}_shotlist.csv`);
-    document.body.appendChild(link);
+    link.href = encodeURI(csvContent);
+    link.download = `${project.title}_shotlist.csv`;
     link.click();
     setIsExportModalOpen(false);
   };
 
   const exportPDF = async () => {
     if (!project) return;
-    const doc = new jsPDF();
     
-    // PDF header styling
-    doc.setFillColor(15, 15, 15);
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setTextColor(55, 202, 255); // Cyan
-    doc.setFontSize(22);
-    doc.text('SHYTLIST', 14, 20);
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.text(`PROJECT: ${project.title.toUpperCase()}`, 14, 28);
-    doc.text(`DIRECTOR: ${project.director.toUpperCase()}`, 14, 34);
-    doc.text(`DP: ${project.dp.toUpperCase()}`, 100, 34);
+    // 1. Asynchronously load and cache all storyboard images if Storyboard is included in exportColumns
+    const loadedImages: Record<string, HTMLImageElement | null> = {};
+    if (exportColumns.includes('Storyboard')) {
+      const imagePromises = shots.map(async (shot) => {
+        if (shot.storyboard_url) {
+          try {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            // Use cache-busting query parameter to bypass potential CORS cached header issues
+            try {
+              const urlObj = new URL(shot.storyboard_url);
+              urlObj.searchParams.set('cors_bypass', new Date().getTime().toString());
+              img.src = urlObj.toString();
+            } catch (e) {
+              img.src = shot.storyboard_url + `?cors_bypass=${new Date().getTime()}`;
+            }
+            await new Promise((resolve) => {
+              img.onload = () => resolve(img);
+              img.onerror = () => resolve(null);
+            });
+            return { id: shot.id, img };
+          } catch (e) {
+            return { id: shot.id, img: null };
+          }
+        }
+        return { id: shot.id, img: null };
+      });
+      const loadedImagesArray = await Promise.all(imagePromises);
+      loadedImagesArray.forEach(item => {
+        loadedImages[item.id] = item.img;
+      });
+    }
 
-    // Optional Logo
+    // 2. Instantiate jsPDF in landscape format
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth(); // 297
+    const pageHeight = doc.internal.pageSize.getHeight(); // 210
+
+    // 3. Draw a premium charcoal banner spanning the entire width
+    doc.setFillColor(8, 8, 8); // #080808 (nav background)
+    doc.rect(0, 0, pageWidth, 42, 'F');
+
+    // 4. Draw the bottom brand-yellow accent line (1.5mm thickness)
+    doc.setFillColor(255, 232, 55); // brand-yellow (#FFE837)
+    doc.rect(0, 42, pageWidth, 1.5, 'F');
+
+    // 5. Title "SHYTLIST" in bold cyan
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(55, 202, 255); // brand-cyan (#37CAFF)
+    doc.setFontSize(24);
+    doc.text('SHYTLIST', 14, 18);
+
+    // Subtitle / Project Name in white
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.text(`PROJECT: ${project.title.toUpperCase()}`, 14, 27);
+
+    // Crew Info: Director and DP in brand-yellow (as requested)
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 232, 55); // brand-yellow (#FFE837)
+    doc.setFontSize(9);
+    doc.text(`DIR: ${project.director.toUpperCase()}`, 14, 34);
+    doc.text(`DP: ${project.dp.toUpperCase()}`, 80, 34);
+
+    // 6. On-Set Production Metrics Grid in the header
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.text('SCENES', 140, 16);
+    doc.text('SHOTS', 160, 16);
+    doc.text('EST. DAY', 180, 16);
+    doc.text('FILM RUNTIME', 205, 16);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.text(`${productionMetrics.sceneCount}`, 140, 24);
+    doc.text(`${shots.length}`, 160, 24);
+    doc.text(`${productionMetrics.totalDuration}`, 180, 24);
+    
+    // Highlight edited film runtime in brand-yellow
+    doc.setTextColor(255, 232, 55); // brand-yellow
+    doc.text(`${productionMetrics.filmDuration}`, 205, 24);
+
+    // 7. Corporate Logo Upload (Top-Right)
     if (project.company_logo_url) {
       try {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.src = project.company_logo_url;
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve; // fail gracefully
-        });
-        // Check if image has dimensions
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
         if (img.width > 0) {
-          doc.addImage(img, 'PNG', 160, 10, 35, 20);
+          // Render logo nicely aligned on the far right
+          doc.addImage(img, 'PNG', pageWidth - 45, 8, 30, 18);
         }
-      } catch (e) {
-        console.error('Failed to add logo to PDF', e);
-      }
+      } catch (e) {}
     }
-    
-    const baseHeaders = ['#', 'SCENE'];
-    const activeHeaders = exportColumns.map(c => c.toUpperCase());
-    const head = [[...baseHeaders, ...activeHeaders]];
+
+    // 8. Construct Headers & Body for the Table
+    // Map headers to uppercase display titles
+    const headHeaders = ['#', 'SCENE'];
+    exportColumns.forEach(col => {
+      if (col === 'Storyboard') headHeaders.push('STORYBOARD');
+      else if (col === 'Shot Size') headHeaders.push('SIZE');
+      else headHeaders.push(col.toUpperCase());
+    });
+    const head = [headHeaders];
 
     const body = shots.map(s => {
       const row = [s.shot_no, s.scene_no];
-      if (exportColumns.includes('Shot Size')) row.push(s.shot_size);
-      if (exportColumns.includes('Lens')) row.push(s.lens);
-      if (exportColumns.includes('Movement')) row.push(s.movement);
-      if (exportColumns.includes('Angle')) row.push(s.angle);
-      if (exportColumns.includes('Framing')) row.push(s.framing);
-      if (exportColumns.includes('Description')) row.push(s.description);
+      exportColumns.forEach(col => {
+        if (col === 'Storyboard') row.push(''); // placeholder, drawn via didDrawCell
+        else if (col === 'Shot Size') row.push(s.shot_size);
+        else if (col === 'Lens') row.push(s.lens);
+        else if (col === 'Movement') row.push(s.movement);
+        else if (col === 'Angle') row.push(s.angle);
+        else if (col === 'Framing') row.push(s.framing);
+        else if (col === 'Description') row.push(s.description);
+      });
       return row;
     });
 
+    // 9. Column width mapping
+    const colStyles: Record<number, any> = {
+      0: { cellWidth: 10, halign: 'center' }, // #
+      1: { cellWidth: 14, halign: 'center' }, // SCENE
+    };
+    headHeaders.forEach((header, index) => {
+      if (index < 2) return;
+      if (header === 'STORYBOARD') {
+        colStyles[index] = { cellWidth: 32, halign: 'center' };
+      } else if (header === 'SIZE') {
+        colStyles[index] = { cellWidth: 26 };
+      } else if (header === 'LENS') {
+        colStyles[index] = { cellWidth: 18 };
+      } else if (header === 'MOVEMENT') {
+        colStyles[index] = { cellWidth: 28 };
+      } else if (header === 'ANGLE') {
+        colStyles[index] = { cellWidth: 28 };
+      } else if (header === 'FRAMING') {
+        colStyles[index] = { cellWidth: 24 };
+      } else if (header === 'DESCRIPTION') {
+        colStyles[index] = { cellWidth: 'auto' };
+      }
+    });
+
+    // 10. Render AutoTable
     autoTable(doc, {
-      startY: 45,
-      head: head,
-      body: body,
+      startY: 48,
+      head,
+      body,
       theme: 'grid',
-      headStyles: { fillColor: [23, 23, 23], textColor: [55, 202, 255], fontSize: 7, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7, cellPadding: 3 }
+      headStyles: {
+        fillColor: [18, 18, 18], // #121212 surface
+        textColor: [55, 202, 255], // brand-cyan
+        fontSize: 8,
+        fontStyle: 'bold',
+        font: 'helvetica',
+        valign: 'middle'
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: [30, 30, 30],
+        font: 'helvetica',
+        valign: 'middle',
+        // Row height matches storyboards size if included
+        minCellHeight: exportColumns.includes('Storyboard') ? 22 : 10
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250] // alternating rows for legibility
+      },
+      columnStyles: colStyles,
+      didDrawCell: (data) => {
+        if (data.section === 'body') {
+          const colHeader = headHeaders[data.column.index]?.toUpperCase() || '';
+          if (colHeader === 'STORYBOARD') {
+            const shot = shots[data.row.index];
+            if (shot && shot.storyboard_url) {
+              const img = loadedImages[shot.id];
+              if (img) {
+                // Calculate dimensions to preserve 16:9 ratio in the cell
+                const paddingX = 2;
+                const paddingY = 2;
+                const cellX = data.cell.x + paddingX;
+                const cellY = data.cell.y + paddingY;
+                const cellWidth = data.cell.width - (paddingX * 2);
+                const cellHeight = data.cell.height - (paddingY * 2);
+
+                try {
+                  doc.addImage(img, 'WEBP', cellX, cellY, cellWidth, cellHeight);
+                } catch (err) {
+                  // Fallback to JPEG if WEBP fails, or draw placeholder
+                  try {
+                    doc.addImage(img, 'JPEG', cellX, cellY, cellWidth, cellHeight);
+                  } catch (e) {
+                    doc.setFontSize(6);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text('IMAGE ERR', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
+                  }
+                }
+              } else {
+                doc.setFontSize(6);
+                doc.setTextColor(150, 150, 150);
+                doc.text('NO VISUAL', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
+              }
+            } else {
+              doc.setFontSize(6);
+              doc.setTextColor(150, 150, 150);
+              doc.text('NO VISUAL', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
+            }
+          }
+        }
+      }
     });
 
     doc.save(`${project.title}_shotlist.pdf`);
@@ -849,30 +748,12 @@ export default function ShotlistEditor() {
                     />
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <button 
-                      onClick={saveProjectInfo}
-                      className="btn-primary flex-1 py-2 text-xs"
-                    >
-                      Save Changes
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setTempName(project.title || '');
-                        setTempDirector(project.director || '');
-                        setTempDp(project.dp || '');
-                        setIsEditingInfo(false);
-                      }}
-                      className="btn-outline flex-1 py-2 text-xs"
-                    >
-                      Cancel
-                    </button>
+                    <button onClick={saveProjectInfo} className="btn-primary flex-1 py-2 text-xs">Save Changes</button>
+                    <button onClick={() => { setTempName(project.title || ''); setTempDirector(project.director || ''); setTempDp(project.dp || ''); setIsEditingInfo(false); }} className="btn-outline flex-1 py-2 text-xs">Cancel</button>
                   </div>
                 </div>
               ) : (
-                <div 
-                  className="cursor-pointer group/info relative"
-                  onClick={() => setIsEditingInfo(true)}
-                >
+                <div className="cursor-pointer group/info relative" onClick={() => setIsEditingInfo(true)}>
                   <div className="absolute -inset-2 rounded-xl bg-white/[0.02] opacity-0 group-hover/info:opacity-100 transition-opacity"></div>
                   <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white group-hover/info:text-brand-cyan transition-colors relative z-10">{project.title}</h2>
                   <p className="text-brand-yellow font-medium mt-1 relative z-10">Dir. {project.director}</p>
@@ -889,7 +770,6 @@ export default function ShotlistEditor() {
                 <Clock className="w-3.5 h-3.5 text-brand-cyan" />
                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Production Estimate</p>
               </div>
-              
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Shooting</span>
@@ -904,7 +784,6 @@ export default function ShotlistEditor() {
                   <p className="text-sm font-semibold text-zinc-400">{productionMetrics.transitionDuration}</p>
                 </div>
               </div>
-
               <div className="pt-2 space-y-3">
                 <div className="bg-brand-cyan/5 rounded-xl p-3 border border-brand-cyan/10">
                   <span className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest block mb-1">Estimated Day</span>
@@ -915,7 +794,6 @@ export default function ShotlistEditor() {
                   <p className="text-2xl font-bold text-white tracking-tight">{productionMetrics.filmDuration}</p>
                 </div>
               </div>
-              
               <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                 <span>{productionMetrics.sceneCount} Scenes</span>
                 <span>{shots.length} Shots</span>
@@ -927,89 +805,37 @@ export default function ShotlistEditor() {
               <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold border-b border-white/5 pb-3">Production Branding</p>
               <div 
                 className="aspect-video bg-zinc-950 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-yellow/30 transition-all group overflow-hidden relative"
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) handleLogoUpload(file);
-                  };
-                  input.click();
-                }}
+                onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleLogoUpload(file); }; input.click(); }}
               >
-                {project.company_logo_url ? (
-                  <img src={project.company_logo_url} alt="Logo" className="w-full h-full object-contain p-4" />
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 text-zinc-600 group-hover:text-brand-yellow transition-colors" />
-                    <span className="text-[10px] text-zinc-600 font-bold uppercase">Upload Logo</span>
-                  </>
-                )}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <span className="text-[10px] text-white font-bold uppercase">Change Logo</span>
-                </div>
+                {project.company_logo_url ? <img src={project.company_logo_url} alt="Logo" className="w-full h-full object-contain p-4" /> : <> <Upload className="w-4 h-4 text-zinc-600 group-hover:text-brand-yellow transition-colors" /> <span className="text-[10px] text-zinc-600 font-bold uppercase">Upload Logo</span> </>}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"> <span className="text-[10px] text-white font-bold uppercase">Change Logo</span> </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
               <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1">Export & Share</p>
-              <button 
-                onClick={() => setIsExportModalOpen(true)} 
-                className="btn-primary w-full justify-center gap-3 py-3"
-              >
-                <FileArrowDown className="w-4 h-4" />
-                <span>Export Settings</span>
-              </button>
+              <button onClick={() => setIsExportModalOpen(true)} className="btn-primary w-full justify-center gap-3 py-3"> <FileArrowDown className="w-4 h-4" /> <span>Export Settings</span> </button>
             </div>
 
             <div className="flex flex-col gap-3">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1">Shot Presets</p>
-              <button 
-                onClick={() => addSequence('master_coverage')}
-                className="w-full bg-zinc-900 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-3 transition-all group flex items-center gap-3 text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors">
-                  <Copy className="w-4 h-4 text-brand-cyan" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Establish</p>
-                  <p className="text-[9px] text-zinc-500 font-medium">3 shots (Master, A, B)</p>
-                </div>
-              </button>
-              <button 
-                onClick={() => addSequence('overs_tows')}
-                className="w-full bg-zinc-900 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-3 transition-all group flex items-center gap-3 text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors">
-                  <Copy className="w-4 h-4 text-brand-cyan" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Dialogue</p>
-                  <p className="text-[9px] text-zinc-500 font-medium">3 shots (2S, OTS A, OTS B)</p>
-                </div>
-              </button>
-              <button 
-                onClick={() => addSequence('detail_coverage')}
-                className="w-full bg-zinc-900 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-3 transition-all group flex items-center gap-3 text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors">
-                  <Copy className="w-4 h-4 text-brand-cyan" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider">Detail / Macro Pkg</p>
-                  <p className="text-[9px] text-zinc-500 font-medium">3 shots (CU, 2x ECU)</p>
-                </div>
-              </button>
+              <p className="label-micro opacity-50">Quick Presets</p>
+              {[
+                { type: 'master_coverage', label: 'Establish', sub: '3 shots (Master, A, B)' },
+                { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, OTS A, OTS B)' },
+                { type: 'detail_coverage', label: 'Detail / Macro Pkg', sub: '3 shots (CU, 2x ECU)' }
+              ].map(p => (
+                <button key={p.type} onClick={() => addSequence(p.type as any)} className="w-full bg-zinc-900 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-3 transition-all group flex items-center gap-3 text-left">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors"> <Copy className="w-4 h-4 text-brand-cyan" /> </div>
+                  <div> <p className="text-[10px] font-bold text-white uppercase tracking-wider">{p.label}</p> <p className="text-[9px] text-zinc-500 font-medium">{p.sub}</p> </div>
+                </button>
+              ))}
             </div>
           </div>
-
-
         </aside>
 
         {/* Main Editor Section */}
         <section className="flex-1 flex flex-col bg-bg overflow-hidden">
-          {/* Header Actions for Mobile/Small Screens */}
+          {/* Mobile Header */}
           <div className="lg:hidden p-6 bg-nav border-b border-white/5 flex justify-between items-center">
             <div className="flex items-center gap-4">
                <button onClick={() => navigate('/projects')} className="text-zinc-500 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
@@ -1020,617 +846,201 @@ export default function ShotlistEditor() {
             </div>
           </div>
 
-          {/* VIEW TOGGLE BAR */}
           <div className="px-6 md:px-8 py-4 bg-zinc-950 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 bg-zinc-900 p-1 rounded-xl border border-white/5 w-full sm:w-auto overflow-x-auto">
-              <button 
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}
-              >
-                <List className="w-4 h-4" />
-                Table View
-              </button>
-              <button 
-                onClick={() => setViewMode('gallery')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}
-              >
-                <SquaresFour className="w-4 h-4" />
-                Gallery View
-              </button>
+              <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <List className="w-4 h-4" /> Table View </button>
+              <button onClick={() => setViewMode('gallery')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <SquaresFour className="w-4 h-4" /> Gallery View </button>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">Showing {shots.length} Shots</span>
-            </div>
+            <div className="flex items-center gap-4"> <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">Showing {shots.length} Shots</span> </div>
           </div>
 
-          {/* INPUT BAR: PREMIUM GRID */}
           <div className="px-8 py-6 bg-nav border-b border-white/5">
             <form onSubmit={addShot} className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-3 items-end">
-              <div className="md:col-span-1">
-                <label className="label-micro">Shot #</label>
-                <select 
-                  className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6" 
-                  value={newShot.shot_no}
-                  onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}
-                >
-                  {OPTIONS.no.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                </select>
-              </div>
-              <div className="md:col-span-1">
-                <label className="label-micro">Scene</label>
-                <select 
-                  className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6" 
-                  value={newShot.scene_no}
-                  onChange={e => {
-                    const sceneNo = e.target.value;
-                    const nextShotNo = (shots.filter(s => s.scene_no === sceneNo).length + 1).toString();
-                    setNewShot(prev => ({ ...prev, scene_no: sceneNo, shot_no: nextShotNo }));
-                  }}
-                >
-                  {OPTIONS.scene.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                </select>
-              </div>
-              <div className="md:col-span-2">
-                 <label className="label-micro">Size</label>
-                 <select 
-                   className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                   value={newShot.shot_size}
-                   onChange={e => setNewShot(prev => ({ ...prev, shot_size: e.target.value }))}
-                 >
-                   {OPTIONS.shot_size.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                 </select>
-              </div>
-              <div className="md:col-span-1">
-                 <label className="label-micro">Lens</label>
-                 <select 
-                   className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                   value={newShot.lens}
-                   onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}
-                 >
-                   {OPTIONS.lens.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                 </select>
-              </div>
-              <div className="md:col-span-2">
-                 <label className="label-micro">Movement</label>
-                 <select 
-                   className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                   value={newShot.movement}
-                   onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}
-                 >
-                   {OPTIONS.movement.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                 </select>
-              </div>
-              <div className="md:col-span-2">
-                 <label className="label-micro">Angle</label>
-                 <select 
-                   className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                   value={newShot.angle}
-                   onChange={e => setNewShot(prev => ({ ...prev, angle: e.target.value }))}
-                 >
-                   {OPTIONS.angle.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                 </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="label-micro">Description</label>
-                <input 
-                  required
-                  type="text" 
-                  placeholder="Shot details..."
-                  className="input-field w-full focus:ring-1 focus:ring-brand-yellow/20" 
-                  value={newShot.description}
-                  onChange={e => setNewShot(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-              <div className="md:col-span-1">
-                <button 
-                  type="submit" 
-                  className="w-full bg-brand-yellow hover:bg-yellow-400 text-black font-semibold rounded-lg h-[42px] flex items-center justify-center transition-all shadow-lg shadow-brand-yellow/10"
-                >
-                  <Plus className="w-5 h-5 md:w-5 md:h-5" />
-                </button>
-              </div>
+              <div className="md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-1"> <label className="label-micro">Scene</label> <select className="input-field" value={newShot.scene_no} onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}> {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-2"> <label className="label-micro">Size</label> <select className="input-field" value={newShot.shot_size} onChange={e => setNewShot(prev => ({ ...prev, shot_size: e.target.value }))}> {OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-1"> <label className="label-micro">Lens</label> <select className="input-field" value={newShot.lens} onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}> {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-2"> <label className="label-micro">Movement</label> <select className="input-field" value={newShot.movement} onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}> {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-2"> <label className="label-micro">Angle</label> <select className="input-field" value={newShot.angle} onChange={e => setNewShot(prev => ({ ...prev, angle: e.target.value }))}> {OPTIONS.angle.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-2"> <label className="label-micro">Description</label> <input required className="input-field" value={newShot.description} onChange={e => setNewShot(prev => ({ ...prev, description: e.target.value }))} placeholder="Shot details..." /> </div>
+              <div className="md:col-span-1"> <button type="submit" className="w-full bg-brand-yellow hover:bg-yellow-400 text-black font-semibold rounded-lg h-[42px] flex items-center justify-center transition-all shadow-lg shadow-brand-yellow/10"> <Plus className="w-5 h-5" /> </button> </div>
             </form>
           </div>
 
-          {/* CONTENT AREA */}
           <div className="flex-1 overflow-auto p-6">
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="space-y-12 pb-20">
                 {sceneNumbers.map(sceneNo => {
                   const sceneShots = groupedShots[sceneNo];
                   const isCollapsed = collapsedScenes[sceneNo];
-
                   return (
                     <div key={sceneNo} className="space-y-4">
-                      {/* SCENE HEADER */}
-                      <button 
-                        onClick={() => toggleScene(sceneNo)}
-                        className="flex items-center gap-4 group/scene w-full text-left"
-                      >
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 text-zinc-500 group-hover/scene:border-brand-cyan/50 group-hover/scene:text-brand-cyan transition-all">
-                          {isCollapsed ? <CaretRight className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-white tracking-tight">Scene {sceneNo}</h3>
-                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{sceneShots.length} Shots in Scene</p>
-                        </div>
+                      <button onClick={() => toggleScene(sceneNo)} className="flex items-center gap-4 group/scene w-full text-left">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-900 border border-white/5 text-zinc-500 group-hover/scene:border-brand-cyan/50 transition-all"> {isCollapsed ? <CaretRight /> : <CaretDown />} </div>
+                        <div> <h3 className="text-xl font-bold text-white tracking-tight">Scene {sceneNo}</h3> <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{sceneShots.length} Shots in Scene</p> </div>
                         <div className="flex-1 h-px bg-white/5"></div>
                       </button>
-
                       <AnimatePresence>
                         {!isCollapsed && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {viewMode === 'table' ? (
-                              <div className="w-full rounded-2xl border border-white/5 bg-zinc-900/10 backdrop-blur-sm overflow-x-auto shadow-xl">
-                                <table className="w-full text-left border-collapse min-w-[900px]">
-                                  <thead className="bg-zinc-900/50 border-b border-white/5">
-                                    <tr className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-                                      <th className="px-4 py-5 w-10"></th>
-                                      <th className="px-4 py-5 w-12 text-brand-cyan">#</th>
-                                      <th className="px-4 py-5 w-24">Storyboard</th>
-                                      <th className="px-4 py-5 w-36">Size</th>
-                                      <th className="px-4 py-5 w-24">Lens</th>
-                                      <th className="px-4 py-5 w-40">Movement</th>
-                                      <th className="px-4 py-5 w-40">Angle</th>
-                                      <th className="px-4 py-5">Description</th>
-                                      <th className="px-4 py-5 w-20 text-right pr-6">Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <Droppable droppableId={`scene-${sceneNo}-table`}>
-                                    {(provided) => (
-                                      <tbody {...provided.droppableProps} ref={provided.innerRef}>
-                                        {sceneShots.map((shot) => (
-                                          <DraggableAny key={shot.id} draggableId={shot.id} index={shots.indexOf(shot)}>
-                                            {(provided: any, snapshot: any) => (
-                                              <tr
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                style={{
-                                                  ...provided.draggableProps.style,
-                                                  backgroundColor: snapshot.isDragging ? 'rgba(55, 202, 255, 0.05)' : '',
-                                                }}
-                                                className={`
-                                                  group transition-all duration-300
-                                                  ${snapshot.isDragging ? 'border-brand-cyan/50 z-50 rounded-lg overflow-hidden' : 'hover:bg-white/[0.02]'}
-                                                `}
-                                              >
-                                                <td className="px-4 py-5">
-                                                  <div {...provided.dragHandleProps} className="text-zinc-700 group-hover:text-zinc-500 transition-colors cursor-grab active:cursor-grabbing text-center">
-                                                    <DotsSixVertical className="w-4 h-4 mx-auto" />
-                                                  </div>
-                                                </td>
-                                                <td className="px-4 py-5 text-zinc-300 text-sm font-semibold tracking-tighter">{shot.shot_no}</td>
-                                                <td className="px-4 py-5">
-                                                  <div 
-                                                    className="w-16 h-10 bg-zinc-800 rounded-lg border border-white/5 overflow-hidden flex items-center justify-center cursor-pointer hover:border-brand-cyan/50 transition-all group/sb relative"
-                                                    onClick={() => {
-                                                      const input = document.createElement('input');
-                                                      input.type = 'file';
-                                                      input.accept = 'image/*';
-                                                      input.onchange = (e) => {
-                                                        const file = (e.target as HTMLInputElement).files?.[0];
-                                                        if (file) handleImageUpload(shot.id, file);
-                                                      };
-                                                      input.click();
-                                                    }}
-                                                  >
-                                                    {shot.storyboard_url ? (
-                                                      <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                      <ImageIcon className="w-4 h-4 text-zinc-600 group-hover/sb:text-brand-cyan transition-colors" />
-                                                    )}
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/sb:opacity-100 flex items-center justify-center transition-opacity">
-                                                      <Upload className="w-3 h-3 text-white" />
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <AnimatePresence mode="wait">
+                              {viewMode === 'table' ? (
+                                <motion.div
+                                  key="table"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                    <div className="w-full rounded-2xl border border-white/5 bg-zinc-900/10 backdrop-blur-sm overflow-x-auto shadow-xl">
+                                      <div className="min-w-[900px] flex flex-col">
+                                        {/* Header */}
+                                        <div className="bg-zinc-900/50 border-b border-white/5 flex items-center text-[10px] uppercase tracking-widest text-zinc-500 font-semibold py-4">
+                                          <div className="px-4 w-10 flex-shrink-0"></div>
+                                          <div className="px-4 w-12 flex-shrink-0 text-brand-cyan">#</div>
+                                          <div className="px-4 w-24 flex-shrink-0">Storyboard</div>
+                                          <div className="px-4 w-36 flex-shrink-0">Size</div>
+                                          <div className="px-4 w-24 flex-shrink-0">Lens</div>
+                                          <div className="px-4 w-40 flex-shrink-0">Movement</div>
+                                          <div className="px-4 w-40 flex-shrink-0">Angle</div>
+                                          <div className="px-4 flex-1">Description</div>
+                                          <div className="px-4 w-20 flex-shrink-0 text-right pr-6">Actions</div>
+                                        </div>
+
+                                        {/* Body */}
+                                        <Droppable droppableId={`scene-${sceneNo}-table`}>
+                                          {(provided) => (
+                                            <div {...provided.droppableProps} ref={provided.innerRef} className="flex flex-col">
+                                              {sceneShots.map((shot, index) => (
+                                                <DraggableAny key={shot.id} draggableId={shot.id} index={index}>
+                                                  {(p: any, s: any) => renderDraggable((provided: any, snapshot: any) => (
+                                                    <div
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      style={{ ...provided.draggableProps.style, backgroundColor: snapshot.isDragging ? 'rgba(55, 202, 255, 0.05)' : '' }}
+                                                      className={`group hover:bg-white/[0.02] border-b border-white/[0.03] last:border-b-0 flex items-center transition-colors duration-150 py-3 ${snapshot.isDragging ? 'border-brand-cyan/50' : ''}`}
+                                                    >
+                                                      <div className="px-4 w-10 flex-shrink-0 flex items-center justify-center" {...provided.dragHandleProps}>
+                                                        <DotsSixVertical className="text-zinc-700 group-hover:text-zinc-500 mx-auto" />
+                                                      </div>
+                                                      <div className="px-4 w-12 flex-shrink-0 text-zinc-300 text-sm font-semibold mono">{shot.shot_no}</div>
+                                                      <div className="px-4 w-24 flex-shrink-0">
+                                                        <div className="w-16 h-10 bg-zinc-800 rounded-lg border border-white/5 overflow-hidden flex items-center justify-center cursor-pointer hover:border-brand-cyan/50 transition-colors duration-200 active:scale-[0.97] group/sb relative" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
+                                                          {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <ImageIcon className="text-zinc-600 group-hover/sb:text-brand-cyan" />}
+                                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/sb:opacity-100 flex items-center justify-center transition-opacity"><Upload className="w-3 h-3 text-white" /></div>
+                                                        </div>
+                                                      </div>
+                                                      <div className="px-4 w-36 flex-shrink-0 text-[10px] font-semibold text-zinc-300 uppercase">{shot.shot_size}</div>
+                                                      <div className="px-4 w-24 flex-shrink-0 text-sm font-medium text-zinc-400 mono">{shot.lens}</div>
+                                                      <div className="px-4 w-40 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.movement}</div>
+                                                      <div className="px-4 w-40 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.angle}</div>
+                                                      <div className="px-4 flex-1 text-sm text-zinc-300 font-medium leading-relaxed">{shot.description}</div>
+                                                      <div className="px-4 w-20 flex-shrink-0 text-right pr-6 flex items-center justify-end">
+                                                        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100">
+                                                          <button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple/></button>
+                                                          <button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash/></button>
+                                                        </div>
+                                                      </div>
                                                     </div>
-                                                  </div>
-                                                </td>
-                                                <td className="px-4 py-5 max-w-[144px]">
-                                                  <span className="text-[10px] font-semibold text-zinc-300 block truncate" title={shot.shot_size}>
-                                                    {shot.shot_size}
-                                                  </span>
-                                                </td>
-                                                <td className="px-4 py-5 text-sm font-medium text-zinc-400 truncate max-w-[96px]" title={shot.lens}>{shot.lens}</td>
-                                                <td className="px-4 py-5 text-sm font-medium text-zinc-500 truncate max-w-[160px]" title={shot.movement}>{shot.movement}</td>
-                                                <td className="px-4 py-5 text-sm font-medium text-zinc-500 truncate max-w-[160px]" title={shot.angle}>{shot.angle}</td>
-                                                <td className="px-4 py-5">
-                                                  <p className="text-sm text-zinc-300 font-medium leading-relaxed max-w-2xl">{shot.description}</p>
-                                                </td>
-                                                <td className="px-4 py-5 text-right pr-6">
-                                                  <div className="flex items-center justify-end gap-2">
-                                                    <button 
-                                                      onClick={() => setEditingShot(shot)}
-                                                      className="text-zinc-800 hover:text-brand-cyan opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
-                                                    >
-                                                      <PencilSimple className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                      onClick={() => deleteShot(shot.id)}
-                                                      className="text-zinc-800 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
-                                                    >
-                                                      <Trash className="w-4 h-4" />
-                                                    </button>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            )}
+                                                  ))(p, s)}
+                                                </DraggableAny>
+                                              ))}
+                                              {provided.placeholder}
+                                            </div>
+                                          )}
+                                        </Droppable>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="gallery"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                                >
+                                  <Droppable droppableId={`scene-${sceneNo}-gallery`} direction="horizontal">
+                                    {(provided) => (
+                                      <div {...provided.droppableProps} ref={provided.innerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                                        {sceneShots.map((shot, index) => (
+                                          <DraggableAny key={shot.id} draggableId={shot.id} index={index}>
+                                            {(p: any, s: any) => renderDraggable((provided: any, snapshot: any) => (
+                                              <div ref={provided.innerRef} {...provided.draggableProps} className={`group bg-zinc-950 border border-white/5 rounded-2xl overflow-hidden transition-all ${snapshot.isDragging ? 'ring-2 ring-brand-cyan' : ''}`}>
+                                                <div className="aspect-video bg-zinc-900 relative cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
+                                                  {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="w-6 h-6 text-zinc-700" /><span className="text-[10px] text-zinc-600 font-bold uppercase">No Visual</span></div>}
+                                                  <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-brand-cyan mono">#{shot.shot_no}</div>
+                                                  <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 opacity-0 group-hover:opacity-100"><DotsSixVertical /></div>
+                                                </div>
+                                                <div className="p-4 space-y-4">
+                                                  <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase">{shot.lens} • {shot.movement}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
+                                                  <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3 h-12">{shot.description}</p>
+                                                </div>
+                                              </div>
+                                            ))(p, s)}
                                           </DraggableAny>
                                         ))}
                                         {provided.placeholder}
-                                      </tbody>
+                                      </div>
                                     )}
                                   </Droppable>
-                                </table>
-                              </div>
-                            ) : (
-                              <Droppable droppableId={`scene-${sceneNo}-gallery`} direction="horizontal">
-                                {(provided) => (
-                                  <div 
-                                    {...provided.droppableProps} 
-                                    ref={provided.innerRef}
-                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
-                                  >
-                                    {sceneShots.map((shot) => (
-                                      <DraggableAny key={shot.id} draggableId={shot.id} index={shots.indexOf(shot)}>
-                                        {(provided: any, snapshot: any) => (
-                                          <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            className={`
-                                              group bg-zinc-950 border border-white/5 rounded-2xl overflow-hidden transition-all duration-300
-                                              ${snapshot.isDragging ? 'shadow-2xl shadow-brand-cyan/20 ring-2 ring-brand-cyan/50 scale-105 z-50' : 'hover:border-white/10 hover:bg-zinc-900/50'}
-                                            `}
-                                          >
-                                            {/* Card Header / Storyboard */}
-                                            <div 
-                                              className="aspect-video bg-zinc-900 relative group/sb overflow-hidden cursor-pointer"
-                                              onClick={() => {
-                                                const input = document.createElement('input');
-                                                input.type = 'file';
-                                                input.accept = 'image/*';
-                                                input.onchange = (e) => {
-                                                  const file = (e.target as HTMLInputElement).files?.[0];
-                                                  if (file) handleImageUpload(shot.id, file);
-                                                };
-                                                input.click();
-                                              }}
-                                            >
-                                              {shot.storyboard_url ? (
-                                                <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" />
-                                              ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                                                  <ImageIcon className="w-6 h-6 text-zinc-700 group-hover/sb:text-brand-cyan transition-colors" />
-                                                  <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">No Storyboard</span>
-                                                </div>
-                                              )}
-
-                                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/sb:opacity-100 flex items-center justify-center transition-opacity">
-                                                <div className="flex flex-col items-center gap-2">
-                                                  <Upload className="w-5 h-5 text-white" />
-                                                  <span className="text-[10px] text-white font-bold uppercase tracking-widest">Update Image</span>
-                                                </div>
-                                              </div>
-
-                                              {/* Shot Number Badge */}
-                                              <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-brand-cyan">#{shot.shot_no}</span>
-                                              </div>
-
-                                              {/* Drag Handle */}
-                                              <div 
-                                                {...provided.dragHandleProps}
-                                                className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
-                                              >
-                                                <DotsSixVertical className="w-3 h-3" />
-                                              </div>
-                                            </div>
-
-                                            {/* Card Content */}
-                                            <div className="p-4 space-y-4">
-                                              <div className="flex items-start justify-between gap-3">
-                                                <div className="space-y-1">
-                                                  <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">{shot.shot_size}</p>
-                                                  <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">{shot.lens} • {shot.movement}</p>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                  <button 
-                                                    onClick={() => setEditingShot(shot)}
-                                                    className="p-1.5 text-zinc-700 hover:text-brand-cyan transition-colors"
-                                                  >
-                                                    <PencilSimple className="w-3.5 h-3.5" />
-                                                  </button>
-                                                  <button 
-                                                    onClick={() => deleteShot(shot.id)}
-                                                    className="p-1.5 text-zinc-700 hover:text-red-400 transition-colors"
-                                                  >
-                                                    <Trash className="w-3.5 h-3.5" />
-                                                  </button>
-                                                </div>
-                                              </div>
-
-                                              <div className="h-px bg-white/5"></div>
-
-                                              <div>
-                                                <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3">
-                                                  {shot.description || "No description provided."}
-                                                </p>
-                                              </div>
-
-                                              <div className="flex items-center gap-2 pt-1">
-                                                <span className="text-[10px] bg-zinc-900 text-zinc-500 px-2 py-0.5 rounded border border-white/5 font-bold uppercase tracking-tighter">{shot.angle}</span>
-                                                <span className="text-[10px] bg-zinc-900 text-zinc-500 px-2 py-0.5 rounded border border-white/5 font-bold uppercase tracking-tighter">{shot.framing}</span>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </DraggableAny>
-                                    ))}
-                                    {provided.placeholder}
-                                  </div>
-                                )}
-                              </Droppable>
-                            )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
                   );
                 })}
-
-                {shots.length === 0 && (
-                  <div className="py-40 text-center text-zinc-600 font-medium text-sm bg-zinc-900/10 rounded-3xl border border-white/5">
-                    Your shotlist is empty. Add a shot above to get started.
-                  </div>
-                )}
               </div>
             </DragDropContext>
           </div>
-          </section>
+        </section>
       </div>
 
-      {/* Export Settings Modal */}
       <AnimatePresence>
         {isExportModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsExportModalOpen(false)}
-              className="absolute inset-0 bg-bg/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 20 }}
-              className="relative w-full max-w-md bg-zinc-900 border border-white/10 p-8 rounded-3xl shadow-3xl overflow-hidden"
-            >
-              <button
-                onClick={() => setIsExportModalOpen(false)}
-                className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-md w-full relative">
+              <button onClick={() => setIsExportModalOpen(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
+              <h2 className="text-2xl font-semibold text-white mb-2">Export Selection</h2>
+              <div className="space-y-4 mb-8"> {ALL_COLUMNS.map(col => ( <label key={col} className="flex items-center gap-3 cursor-pointer"> <input type="checkbox" className="hidden" checked={exportColumns.includes(col)} onChange={() => setExportColumns(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])} /> <div className={`w-5 h-5 rounded border flex items-center justify-center ${exportColumns.includes(col) ? 'bg-brand-cyan' : 'border-zinc-700'}`}>{exportColumns.includes(col) && <CheckCircle size={14} className="text-black" />}</div> <span className="text-sm font-medium text-zinc-300">{col}</span> </label> ))} </div>
+              <div className="flex gap-3"><button onClick={exportPDF} className="btn-primary flex-1">PDF</button><button onClick={exportCSV} className="btn-outline flex-1">CSV</button></div>
+            </motion.div>
+          </div>
+        )}
 
-              <div className="mb-8 text-left">
-                <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">Export Settings</h2>
-                <p className="text-zinc-500 text-sm">Choose which columns to include in your export. Note: '#' and 'Scene' are always included.</p>
-              </div>
+        {editingShot && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-10 rounded-3xl max-w-2xl w-full relative">
+              <button onClick={() => setEditingShot(null)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
+              <h2 className="text-2xl font-bold text-white mb-10">Edit Shot #{editingShot.shot_no}</h2>
+              <form onSubmit={updateShot} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <select className="input-field" value={editingShot.shot_size} onChange={e => setEditingShot({ ...editingShot, shot_size: e.target.value })}>{OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                  <select className="input-field" value={editingShot.lens} onChange={e => setEditingShot({ ...editingShot, lens: e.target.value })}>{OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                </div>
+                <textarea className="input-field min-h-[120px] py-4" value={editingShot.description} onChange={e => setEditingShot({ ...editingShot, description: e.target.value })} />
+                <div className="flex gap-3 pt-4"><button type="submit" className="btn-primary flex-1 py-4">Save Changes</button><button type="button" onClick={() => setEditingShot(null)} className="btn-outline px-12 py-4">Cancel</button></div>
+              </form>
+            </motion.div>
+          </div>
+        )}
 
-              <div className="space-y-4 mb-8">
-                {ALL_COLUMNS.map(col => (
-                  <label key={col} className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${exportColumns.includes(col) ? 'bg-brand-cyan border-brand-cyan' : 'border-zinc-700 group-hover:border-zinc-500'}`}>
-                      {exportColumns.includes(col) && <CheckCircle className="w-3.5 h-3.5 text-black" />}
-                    </div>
-                    <span className="text-sm font-medium text-zinc-300">{col}</span>
-                    <input 
-                      type="checkbox" 
-                      className="hidden" 
-                      checked={exportColumns.includes(col)}
-                      onChange={() => {
-                        setExportColumns(prev => 
-                          prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
-                        );
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <div className="flex gap-3">
-                <button 
-                  onClick={exportPDF} 
-                  className="btn-primary flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2"
-                >
-                  <FileArrowDown className="w-4 h-4" />
-                  PDF
-                </button>
-                <button 
-                  onClick={exportCSV} 
-                  className="btn-outline flex-1 py-3 font-semibold rounded-xl flex items-center justify-center gap-2"
-                >
-                  <FileCsv className="w-4 h-4 text-brand-yellow" />
-                  CSV
-                </button>
+        {isPresetModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-md w-full relative">
+              <button onClick={() => setIsPresetModalOpen(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
+              <h2 className="text-2xl font-bold text-white mb-6">Add Preset</h2>
+              <div className="space-y-6">
+                <select className="input-field" value={presetSceneNo} onChange={e => setPresetSceneNo(e.target.value)}>{OPTIONS.scene.map(o => <option key={o} value={o}>Scene {o}</option>)}</select>
+                <div className="flex gap-3 pt-4"><button onClick={confirmAddSequence} className="btn-primary flex-1 py-4">Confirm</button></div>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      {/* Edit Shot Modal */}
-      <AnimatePresence>
-        {editingShot && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setEditingShot(null)}
-              className="absolute inset-0 bg-bg/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 20 }}
-              className="relative w-full max-w-2xl bg-zinc-900 border border-white/10 p-8 md:p-12 rounded-3xl shadow-3xl overflow-hidden"
-            >
-              <button
-                onClick={() => setEditingShot(null)}
-                className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-10 text-left">
-                <div className="flex items-center gap-3 mb-2">
-                  <PencilSimple className="w-6 h-6 text-brand-cyan" />
-                  <h2 className="text-3xl font-semibold text-white tracking-tight">Edit Shot #{editingShot.shot_no}</h2>
-                </div>
-                <p className="text-zinc-500 text-sm">Update shot details for Scene {editingShot.scene_no}.</p>
-              </div>
-
-              <form onSubmit={updateShot} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="label-micro">Shot Size</label>
-                    <select 
-                      className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                      value={editingShot.shot_size}
-                      onChange={e => setEditingShot({ ...editingShot, shot_size: e.target.value })}
-                    >
-                      {OPTIONS.shot_size.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="label-micro">Lens</label>
-                    <select 
-                      className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                      value={editingShot.lens}
-                      onChange={e => setEditingShot({ ...editingShot, lens: e.target.value })}
-                    >
-                      {OPTIONS.lens.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="label-micro">Movement</label>
-                    <select 
-                      className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                      value={editingShot.movement}
-                      onChange={e => setEditingShot({ ...editingShot, movement: e.target.value })}
-                    >
-                      {OPTIONS.movement.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="label-micro">Angle</label>
-                    <select 
-                      className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                      value={editingShot.angle}
-                      onChange={e => setEditingShot({ ...editingShot, angle: e.target.value })}
-                    >
-                      {OPTIONS.angle.map(o => <option key={o} value={o} className="bg-zinc-900">{o}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="label-micro">Description</label>
-                  <textarea 
-                    className="input-field min-h-[100px] py-3 resize-none"
-                    value={editingShot.description}
-                    onChange={e => setEditingShot({ ...editingShot, description: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <button 
-                    type="submit" 
-                    className="btn-primary flex-1 py-4 font-semibold rounded-xl"
-                  >
-                    Save Changes
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setEditingShot(null)}
-                    className="btn-outline px-8 py-4 font-semibold rounded-xl"
-                  >
-                    Cancel
-                  </button>
-                  </div>
-                  </form>
-                  </motion.div>
-                  </div>
-                  )}
-                  </AnimatePresence>
-
-                  {/* Preset Scene Selection Modal */}
-                  <AnimatePresence>
-                  {isPresetModalOpen && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                  <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsPresetModalOpen(false)}
-                  className="absolute inset-0 bg-bg/90 backdrop-blur-md"
-                  />
-                  <motion.div
-                  initial={{ opacity: 0, scale: 0.98, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98, y: 20 }}
-                  className="relative w-full max-w-md bg-zinc-900 border border-white/10 p-8 rounded-3xl shadow-3xl overflow-hidden"
-                  >
-                  <button
-                  onClick={() => setIsPresetModalOpen(false)}
-                  className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
-                  >
-                  <X className="w-5 h-5" />
-                  </button>
-
-                  <div className="mb-8 text-left">
-                  <div className="flex items-center gap-3 mb-2">
-                  <Copy className="w-6 h-6 text-brand-cyan" />
-                  <h2 className="text-2xl font-semibold text-white tracking-tight">Add Shot Preset</h2>
-                  </div>
-                  <p className="text-zinc-500 text-sm">Select which scene to add this preset to.</p>
-                  </div>
-
-                  <div className="space-y-6">
-                  <div className="space-y-2">
-                  <label className="label-micro">Destination Scene</label>
-                  <select 
-                    className="input-field w-full appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2352525b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.4rem_center] bg-[size:1.2em_1.2em] bg-no-repeat pr-6"
-                    value={presetSceneNo}
-                    onChange={e => setPresetSceneNo(e.target.value)}
-                  >
-                    {OPTIONS.scene.map(o => <option key={o} value={o} className="bg-zinc-900">Scene {o}</option>)}
-                  </select>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                  <button 
-                    onClick={confirmAddSequence}
-                    className="btn-primary flex-1 py-4 font-semibold rounded-xl"
-                  >
-                    Add to Scene {presetSceneNo}
-                  </button>
-                  <button 
-                    onClick={() => setIsPresetModalOpen(false)}
-                    className="btn-outline px-8 py-4 font-semibold rounded-xl"
-                  >
-                    Cancel
-                  </button>
-                  </div>
-                  </div>
-                  </motion.div>
-                  </div>
-                  )}
-                  </AnimatePresence>
-                  </div>
-                  );
-                  }
+    </div>
+  );
+}

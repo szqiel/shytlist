@@ -39,10 +39,43 @@ create table if not exists public.shots (
 -- Index on project_id for faster shotlist loading
 create index if not exists idx_shots_project_id on public.shots(project_id);
 
--- Note: idx_projects_user_id and idx_shots_scene_no were removed to resolve the "unused_index" warnings.
+-- Index on user_id for faster RLS and join performance (Fixed per advisor recommendation)
+create index if not exists idx_projects_user_id on public.projects(user_id);
 
 -- -----------------------------------------------------
--- 3. ROW LEVEL SECURITY (RLS)
+-- 3. FUNCTIONS
+-- -----------------------------------------------------
+
+-- Optimized reorder_shots function
+-- Handles bulk updates in a single transaction for better performance on mobile networks.
+-- Switched to SECURITY INVOKER to ensure RLS compliance and security.
+create or replace function public.reorder_shots(
+  p_shot_ids uuid[],
+  p_shot_numbers text[],
+  p_scene_numbers text[]
+)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.shots as s
+  set 
+    shot_no = t.shot_no,
+    scene_no = t.scene_no
+  from (
+    select 
+      unnest(p_shot_ids) as id,
+      unnest(p_shot_numbers) as shot_no,
+      unnest(p_scene_numbers) as scene_no
+  ) as t
+  where s.id = t.id;
+end;
+$$;
+
+-- -----------------------------------------------------
+-- 4. ROW LEVEL SECURITY (RLS)
 -- -----------------------------------------------------
 
 -- Enable RLS

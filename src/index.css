@@ -16,6 +16,10 @@
   --color-border: #1f1f1f;
   --color-cinema: #1f1f1f;
 
+  /* Custom Easings (emil-design-eng) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   
   @keyframes shimmer {
@@ -33,19 +37,43 @@
 
 @layer components {
   .glass {
-    @apply bg-surface/50 backdrop-blur-md border border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_20px_40px_-15px_rgba(0,0,0,0.5)];
+    @apply bg-[#121212]/50 backdrop-blur-xl border border-white/5 relative overflow-hidden;
+    box-shadow: 
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.05),
+      0 10px 30px -10px rgba(0, 0, 0, 0.7);
   }
-  
+
+  .glass::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none;
+  }
+
   .btn-primary {
-    @apply px-5 py-2.5 bg-brand-cyan text-black font-semibold rounded-lg hover:bg-cyan-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm tracking-tight;
+    @apply px-5 py-2.5 bg-brand-cyan text-black font-semibold rounded-xl hover:bg-cyan-400 active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight shadow-[0_0_20px_-5px_rgba(55,202,255,0.3)];
+    transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  }
+
+  .btn-accent {
+    @apply px-5 py-2.5 bg-brand-yellow text-black font-semibold rounded-xl hover:bg-yellow-400 active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight shadow-[0_0_20px_-5px_rgba(255,232,55,0.3)];
+    transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
   }
 
   .btn-outline {
-    @apply px-5 py-2.5 bg-transparent border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 text-zinc-300 font-medium rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm tracking-tight;
+    @apply px-5 py-2.5 bg-transparent border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 text-zinc-300 font-medium rounded-lg active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight;
+    transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out);
   }
 
   .input-field {
-    @apply w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/20 transition-all placeholder:text-zinc-600;
+    @apply w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/20 placeholder:text-zinc-600;
+    transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  }
+
+  select.input-field {
+    @apply appearance-none pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2371717a'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1em 1em;
   }
 
   .label-micro {
