@@ -13,6 +13,14 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const getRedirectUrl = () => {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return window.location.origin;
+    }
+    return 'https://shytlist.vercel.app';
+  };
+
   const handleAuth = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -29,6 +37,9 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: getRedirectUrl(),
+          },
         });
         if (error) throw error;
         alert('Check your email for the confirmation link!');
@@ -48,7 +59,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/projects`,
+          redirectTo: getRedirectUrl(),
         },
       });
       if (error) throw error;

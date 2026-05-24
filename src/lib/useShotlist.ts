@@ -62,19 +62,39 @@ export function useShotlist(projectId: string | undefined) {
 
   const addShot = async (newShot: Omit<Shot, 'id' | 'project_id'>) => {
     if (!projectId) return;
+    const tempId = `temp-${Math.random()}`;
+    const tempShot: Shot = {
+      ...newShot,
+      id: tempId,
+      project_id: projectId,
+      created_at: new Date().toISOString()
+    };
+    setShots(prev => [...prev, tempShot]);
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('shots')
-        .insert([{ ...newShot, project_id: projectId }]);
+        .insert([{ ...newShot, project_id: projectId }])
+        .select();
+
       if (error) throw error;
+
+      if (data && data[0]) {
+        const realShot = data[0];
+        setShots(prev => prev.map(s => s.id === tempId ? realShot : s));
+      }
       toast.success('Shot added');
     } catch (err) {
+      setShots(prev => prev.filter(s => s.id !== tempId));
       toast.error('Failed to add shot');
       throw err;
     }
   };
 
   const updateShot = async (shot: Shot) => {
+    const previousShots = [...shots];
+    setShots(prev => prev.map(s => s.id === shot.id ? shot : s));
+
     try {
       const { error } = await supabase
         .from('shots')
@@ -83,12 +103,16 @@ export function useShotlist(projectId: string | undefined) {
       if (error) throw error;
       toast.success('Shot updated');
     } catch (err) {
+      setShots(previousShots);
       toast.error('Failed to update shot');
       throw err;
     }
   };
 
   const deleteShot = async (shotId: string) => {
+    const previousShots = [...shots];
+    setShots(prev => prev.filter(s => s.id !== shotId));
+
     try {
       const { error } = await supabase
         .from('shots')
@@ -97,6 +121,7 @@ export function useShotlist(projectId: string | undefined) {
       if (error) throw error;
       toast.success('Shot deleted');
     } catch (err) {
+      setShots(previousShots);
       toast.error('Failed to delete shot');
       throw err;
     }

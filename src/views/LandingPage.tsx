@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X } from '@phosphor-icons/react';
@@ -7,11 +7,22 @@ import { useAuth } from '../lib/AuthContext';
 import Logo from '../components/Logo';
 
 export default function LandingPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const hasAuthParams = 
+      window.location.hash.includes('access_token') || 
+      window.location.search.includes('code') || 
+      window.location.hash.includes('error');
+
+    if (user && !loading && hasAuthParams) {
+      navigate('/projects');
+    }
+  }, [user, loading, navigate]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [director, setDirector] = useState('');
-  const navigate = useNavigate();
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();

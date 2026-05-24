@@ -196,16 +196,34 @@ export default function ShotlistEditor() {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      const target = e.target as HTMLElement;
+      const isInteractive = target && (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.tagName.toLowerCase() === 'button' ||
+        target.isContentEditable
+      );
+
+      if (isInteractive) {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          const form = (e.target as HTMLElement).closest('form');
+          const form = target.closest('form');
           if (form) form.requestSubmit();
         }
         return;
       }
-      if (e.key.toLowerCase() === 'n') { e.preventDefault(); (document.querySelector('input, select') as HTMLElement)?.focus(); }
-      if (e.key.toLowerCase() === 's' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveProjectInfo(); }
-      if (e.key === 'Escape') { setEditingShot(null); }
+
+      if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        (document.querySelector('input, select') as HTMLElement)?.focus();
+      }
+      if (e.key.toLowerCase() === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        saveProjectInfo();
+      }
+      if (e.key === 'Escape') {
+        setEditingShot(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
