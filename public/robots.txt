@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /contact
+Allow: /auth
+Disallow: /projects/
+
+Sitemap: https://shytlist.vercel.app/sitemap.xml

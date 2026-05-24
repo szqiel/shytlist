@@ -1,6 +1,7 @@
 import { useState, useEffect, MouseEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash, ArrowUpRight, FilmSlate, User, Calendar, X, CircleNotch } from '@phosphor-icons/react';
+import { Helmet } from 'react-helmet-async';
 import { Project } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -101,7 +102,12 @@ export default function Projects() {
   };
 
   return (
-    <div className="space-y-16 py-10 max-w-7xl mx-auto">
+    <>
+      <Helmet>
+        <title>My Projects - Shytlist</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+      <div className="space-y-16 py-10 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-12">
         <div>
           <h1 className="text-5xl font-semibold tracking-tighter text-white mb-3 leading-none">Projects</h1>
@@ -299,5 +305,6 @@ export default function Projects() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

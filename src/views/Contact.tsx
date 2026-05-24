@@ -1,9 +1,16 @@
 import { motion } from 'motion/react';
 import { Envelope as Mail } from '@phosphor-icons/react';
+import { Helmet } from 'react-helmet-async';
 
 export default function Contact() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+    <>
+      <Helmet>
+        <title>Contact Us - Shytlist</title>
+        <meta name="description" content="Get in touch with the Shytlist development and business team for collaborations, support, or feedback." />
+        <link rel="canonical" href="https://shytlist.vercel.app/contact" />
+      </Helmet>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -31,5 +38,6 @@ export default function Contact() {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }

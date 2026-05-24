@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 import { 
   Plus, Trash, DotsSixVertical, ArrowLeft, CheckCircle,
   FileArrowDown, FileCsv, Image as ImageIcon, Upload, X,
@@ -725,7 +726,12 @@ export default function ShotlistEditor() {
   if (!project) return null;
 
   return (
-    <div className="flex flex-col h-full bg-bg overflow-hidden min-h-[calc(100vh-64px)]">
+    <>
+      <Helmet>
+        <title>{project ? `${project.title} | Shotlist Editor - Shytlist` : "Shotlist Editor - Shytlist"}</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+      <div className="flex flex-col h-full bg-bg overflow-hidden min-h-[calc(100vh-64px)]">
       <div className="flex h-full flex-1 overflow-hidden">
         {/* Sidebar Project Info */}
         <aside className="w-72 bg-zinc-950 border-r border-white/5 p-6 hidden lg:flex flex-col gap-10">
@@ -1060,5 +1066,6 @@ export default function ShotlistEditor() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

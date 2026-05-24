@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X } from '@phosphor-icons/react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import Logo from '../components/Logo';
@@ -58,7 +59,27 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] pt-12 md:pt-20 gap-16 md:gap-8 max-w-7xl mx-auto w-full">
+    <>
+      <Helmet>
+        <title>Shytlist | The Fastest Shotlist Tool for Filmmakers & DPs</title>
+        <meta name="description" content="Lazy making shotlists? Just Shytlist. The modern, frictionless, and dark-mode optimized shotlist creator designed for indie filmmakers and agile commercial workflows. Ditch the spreadsheets." />
+        <link rel="canonical" href="https://shytlist.vercel.app/" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://shytlist.vercel.app/" />
+        <meta property="og:title" content="Shytlist | The Fastest Shotlist Tool for Filmmakers & DPs" />
+        <meta property="og:description" content="Lazy making shotlists? Just Shytlist. The modern, frictionless, and dark-mode optimized shotlist creator designed for indie filmmakers and agile commercial workflows." />
+        <meta property="og:image" content="https://shytlist.vercel.app/logo.svg" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://shytlist.vercel.app/" />
+        <meta name="twitter:title" content="Shytlist | The Fastest Shotlist Tool for Filmmakers & DPs" />
+        <meta name="twitter:description" content="Lazy making shotlists? Just Shytlist. The modern, frictionless, and dark-mode optimized shotlist creator designed for indie filmmakers and agile commercial workflows." />
+        <meta name="twitter:image" content="https://shytlist.vercel.app/logo.svg" />
+      </Helmet>
+      <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] pt-12 md:pt-20 gap-16 md:gap-8 max-w-7xl mx-auto w-full">
       
       {/* Left Content */}
       <div className="flex-1 w-full max-w-2xl text-left relative z-10">
@@ -218,5 +239,6 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

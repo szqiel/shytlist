@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { SignIn as LogIn, UserPlus, Envelope as Mail, LockKey as Lock, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import Logo from '../components/Logo';
@@ -70,7 +71,13 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6">
+    <>
+      <Helmet>
+        <title>Login / Sign Up - Shytlist</title>
+        <meta name="description" content="Access your Shytlist account to manage your film productions, camera setups, and custom shotlists." />
+        <link rel="canonical" href="https://shytlist.vercel.app/auth" />
+      </Helmet>
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -199,5 +206,6 @@ export default function Auth() {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }
