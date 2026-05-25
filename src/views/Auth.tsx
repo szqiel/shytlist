@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
@@ -43,7 +44,7 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        alert('Check your email for the confirmation link!');
+        toast.success('Check your email for the confirmation link!');
       }
       if (isLogin) navigate('/projects');
     } catch (err: any) {
@@ -79,8 +80,8 @@ export default function Auth() {
       </Helmet>
       <div className="min-h-[80vh] flex items-center justify-center p-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.98, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         className="w-full max-w-md bg-zinc-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden"
       >
         {/* Cinematic Accents */}

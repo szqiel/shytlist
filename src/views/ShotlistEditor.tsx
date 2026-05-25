@@ -731,7 +731,7 @@ export default function ShotlistEditor() {
         <title>{project ? `${project.title} | Shotlist Editor - Shytlist` : "Shotlist Editor - Shytlist"}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <div className="flex flex-col h-full bg-zinc-950/20 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl min-h-[calc(100dvh-120px)] relative z-10">
+      <div className="flex flex-col h-full bg-zinc-950/20 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative z-10">
       <div className="flex h-full flex-1 overflow-hidden">
         {/* Sidebar Project Info */}
         <aside className="w-72 bg-black/15 border-r border-white/5 p-6 hidden lg:flex flex-col gap-8 overflow-y-auto backdrop-blur-md">
@@ -888,8 +888,8 @@ export default function ShotlistEditor() {
 
           <div className="px-8 py-6 bg-black/10 border-b border-white/5">
             <form onSubmit={addShot} className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-3 items-end">
-              <div className="md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-1"> <label className="label-micro">Scene</label> <select className="input-field" value={newShot.scene_no} onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}> {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-2"> <label className="label-micro">Size</label> <select className="input-field" value={newShot.shot_size} onChange={e => setNewShot(prev => ({ ...prev, shot_size: e.target.value }))}> {OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-1"> <label className="label-micro">Lens</label> <select className="input-field" value={newShot.lens} onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}> {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-2"> <label className="label-micro">Movement</label> <select className="input-field" value={newShot.movement} onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}> {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
@@ -914,7 +914,13 @@ export default function ShotlistEditor() {
                       </button>
                       <AnimatePresence>
                         {!isCollapsed && (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                            className="overflow-hidden"
+                          >
                             <AnimatePresence mode="wait">
                               {viewMode === 'table' ? (
                                 <motion.div
@@ -952,8 +958,8 @@ export default function ShotlistEditor() {
                                                       style={{ ...provided.draggableProps.style, backgroundColor: snapshot.isDragging ? 'rgba(55, 202, 255, 0.05)' : '' }}
                                                       className={`group hover:bg-white/[0.02] border-b border-white/[0.03] last:border-b-0 flex items-center transition-colors duration-150 py-3 ${snapshot.isDragging ? 'border-brand-cyan/50' : ''}`}
                                                     >
-                                                      <div className="px-4 w-10 flex-shrink-0 flex items-center justify-center" {...provided.dragHandleProps}>
-                                                        <DotsSixVertical className="text-zinc-700 group-hover:text-zinc-500 mx-auto" />
+                                                      <div className="px-4 w-10 flex-shrink-0 flex items-center justify-center cursor-grab active:cursor-grabbing" {...provided.dragHandleProps}>
+                                                        <DotsSixVertical size={20} className="text-zinc-400 group-hover:text-brand-cyan transition-colors duration-200 mx-auto" />
                                                       </div>
                                                       <div className="px-4 w-12 flex-shrink-0 text-zinc-300 text-sm font-semibold mono">{shot.shot_no}</div>
                                                       <div className="px-4 w-24 flex-shrink-0">
@@ -1003,7 +1009,7 @@ export default function ShotlistEditor() {
                                                   <div className="aspect-video bg-zinc-900 relative cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
                                                     {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="w-6 h-6 text-zinc-700" /><span className="text-[10px] text-zinc-600 font-bold uppercase">No Visual</span></div>}
                                                     <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-brand-cyan mono">#{shot.shot_no}</div>
-                                                    <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 opacity-0 group-hover:opacity-100"><DotsSixVertical /></div>
+                                                    <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 hover:text-brand-cyan transition-colors cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"><DotsSixVertical size={18} /></div>
                                                   </div>
                                                   <div className="p-4 space-y-4">
                                                     <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase">{shot.lens} • {shot.movement}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
@@ -1033,48 +1039,202 @@ export default function ShotlistEditor() {
         </section>
       </div>
 
-      <AnimatePresence>
-        {isExportModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-md w-full relative">
-              <button onClick={() => setIsExportModalOpen(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
-              <h2 className="text-2xl font-semibold text-white mb-2">Export Selection</h2>
-              <div className="space-y-4 mb-8"> {ALL_COLUMNS.map(col => ( <label key={col} className="flex items-center gap-3 cursor-pointer"> <input type="checkbox" className="hidden" checked={exportColumns.includes(col)} onChange={() => setExportColumns(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])} /> <div className={`w-5 h-5 rounded border flex items-center justify-center ${exportColumns.includes(col) ? 'bg-brand-cyan' : 'border-zinc-700'}`}>{exportColumns.includes(col) && <CheckCircle size={14} className="text-black" />}</div> <span className="text-sm font-medium text-zinc-300">{col}</span> </label> ))} </div>
-              <div className="flex gap-3"><button onClick={exportPDF} className="btn-primary flex-1">PDF</button><button onClick={exportCSV} className="btn-outline flex-1">CSV</button></div>
-            </motion.div>
-          </div>
-        )}
+      {createPortal(
+        <AnimatePresence>
+          {isExportModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsExportModalOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+              >
+                <button
+                  onClick={() => setIsExportModalOpen(false)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
 
-        {editingShot && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-10 rounded-3xl max-w-2xl w-full relative">
-              <button onClick={() => setEditingShot(null)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
-              <h2 className="text-2xl font-bold text-white mb-10">Edit Shot #{editingShot.shot_no}</h2>
-              <form onSubmit={updateShot} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <select className="input-field" value={editingShot.shot_size} onChange={e => setEditingShot({ ...editingShot, shot_size: e.target.value })}>{OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)}</select>
-                  <select className="input-field" value={editingShot.lens} onChange={e => setEditingShot({ ...editingShot, lens: e.target.value })}>{OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Export Selection</h2>
+                  <p className="text-zinc-500 text-sm">Select columns to include in your export.</p>
                 </div>
-                <textarea className="input-field min-h-[120px] py-4" value={editingShot.description} onChange={e => setEditingShot({ ...editingShot, description: e.target.value })} />
-                <div className="flex gap-3 pt-4"><button type="submit" className="btn-primary flex-1 py-4">Save Changes</button><button type="button" onClick={() => setEditingShot(null)} className="btn-outline px-12 py-4">Cancel</button></div>
-              </form>
-            </motion.div>
-          </div>
-        )}
 
-        {isPresetModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-3xl max-w-md w-full relative">
-              <button onClick={() => setIsPresetModalOpen(false)} className="absolute top-6 right-6 text-zinc-500 hover:text-white"><X /></button>
-              <h2 className="text-2xl font-bold text-white mb-6">Add Preset</h2>
-              <div className="space-y-6">
-                <select className="input-field" value={presetSceneNo} onChange={e => setPresetSceneNo(e.target.value)}>{OPTIONS.scene.map(o => <option key={o} value={o}>Scene {o}</option>)}</select>
-                <div className="flex gap-3 pt-4"><button onClick={confirmAddSequence} className="btn-primary flex-1 py-4">Confirm</button></div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="space-y-4 mb-8">
+                  {ALL_COLUMNS.map(col => (
+                    <label key={col} className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={exportColumns.includes(col)}
+                        onChange={() => setExportColumns(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])}
+                      />
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${exportColumns.includes(col) ? 'bg-brand-cyan border-brand-cyan' : 'border-zinc-700'}`}>
+                        {exportColumns.includes(col) && <CheckCircle weight="fill" size={14} className="text-black" />}
+                      </div>
+                      <span className="text-sm font-medium text-zinc-300">{col}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex gap-4">
+                  <button onClick={exportPDF} className="btn-primary flex-1 py-4 font-bold cursor-pointer">PDF</button>
+                  <button onClick={exportCSV} className="btn-outline flex-1 py-4 font-bold cursor-pointer">CSV</button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {createPortal(
+        <AnimatePresence>
+          {editingShot && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setEditingShot(null)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                className="relative w-full max-w-2xl glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto text-left"
+              >
+                <button
+                  onClick={() => setEditingShot(null)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-10">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Edit Shot #{editingShot.shot_no}</h2>
+                  <p className="text-zinc-500 text-sm">Adjust shot parameters and description.</p>
+                </div>
+
+                <form onSubmit={updateShot} className="space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Scene</label>
+                      <select className="input-field bg-black/50" value={editingShot.scene_no} onChange={e => setEditingShot({ ...editingShot, scene_no: e.target.value })}>
+                        {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Shot #</label>
+                      <select className="input-field bg-black/50" value={editingShot.shot_no} onChange={e => setEditingShot({ ...editingShot, shot_no: e.target.value })}>
+                        {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Size</label>
+                      <select className="input-field bg-black/50" value={editingShot.shot_size} onChange={e => setEditingShot({ ...editingShot, shot_size: e.target.value })}>
+                        {OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Lens</label>
+                      <select className="input-field bg-black/50" value={editingShot.lens} onChange={e => setEditingShot({ ...editingShot, lens: e.target.value })}>
+                        {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Movement</label>
+                      <select className="input-field bg-black/50" value={editingShot.movement} onChange={e => setEditingShot({ ...editingShot, movement: e.target.value })}>
+                        {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-micro block text-left font-medium">Angle</label>
+                      <select className="input-field bg-black/50" value={editingShot.angle} onChange={e => setEditingShot({ ...editingShot, angle: e.target.value })}>
+                        {OPTIONS.angle.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="label-micro block text-left font-medium">Framing</label>
+                      <select className="input-field bg-black/50" value={editingShot.framing || 'Standard'} onChange={e => setEditingShot({ ...editingShot, framing: e.target.value })}>
+                        {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="label-micro block text-left font-medium">Description</label>
+                      <textarea className="input-field bg-black/50 min-h-[100px] py-3" value={editingShot.description} onChange={e => setEditingShot({ ...editingShot, description: e.target.value })} required />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 pt-4">
+                    <button type="submit" className="btn-primary flex-1 py-4 font-bold cursor-pointer">Save Changes</button>
+                    <button type="button" onClick={() => setEditingShot(null)} className="btn-outline px-12 py-4 font-bold cursor-pointer">Cancel</button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {createPortal(
+        <AnimatePresence>
+          {isPresetModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsPresetModalOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+              >
+                <button
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-8">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Add Preset</h2>
+                  <p className="text-zinc-500 text-sm">Add a preset block of shots to a scene.</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="label-micro block text-left font-medium">Select Scene</label>
+                    <select className="input-field bg-black/50" value={presetSceneNo} onChange={e => setPresetSceneNo(e.target.value)}>
+                      {OPTIONS.scene.map(o => <option key={o} value={o}>Scene {o}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex gap-4 pt-4">
+                    <button onClick={confirmAddSequence} className="btn-primary flex-1 py-4 font-bold cursor-pointer">Confirm</button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
     </>
   );

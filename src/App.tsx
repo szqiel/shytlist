@@ -42,7 +42,7 @@ function AppContent() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-          className="w-full h-full"
+          className={`w-full h-full ${location.pathname.match(/^\/projects\/.+/) ? 'flex flex-col overflow-hidden' : ''}`}
         >
           <Routes location={location}>
             <Route path="/" element={<LandingPage />} />

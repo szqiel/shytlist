@@ -1,5 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X } from '@phosphor-icons/react';
 import { Helmet } from 'react-helmet-async';
@@ -24,6 +26,7 @@ export default function LandingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [director, setDirector] = useState('');
+  const [dp, setDp] = useState('');
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,7 +36,7 @@ export default function LandingPage() {
       return;
     }
 
-    if (!projectName || !director) return;
+    if (!projectName || !director || !dp) return;
 
     try {
       const { data, error } = await supabase
@@ -41,6 +44,7 @@ export default function LandingPage() {
         .insert([{ 
           title: projectName, 
           director,
+          dp,
           user_id: user.id
         }])
         .select()
@@ -50,11 +54,14 @@ export default function LandingPage() {
 
       if (data) {
         setIsModalOpen(false);
+        setProjectName('');
+        setDirector('');
+        setDp('');
         navigate(`/projects/${data.id}`);
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project');
+      toast.error('Failed to create project');
     }
   };
 
@@ -181,67 +188,81 @@ export default function LandingPage() {
       </div>
 
       {/* Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-bg/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", stiffness: 100, damping: 20 }}
-              className="relative w-full max-w-lg glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
-            >
-              <button
+      {createPortal(
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                className="absolute inset-0 bg-bg/90 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                className="relative w-full max-w-lg glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
               >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-10 text-left">
-                <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Create Shotlist</h2>
-                <p className="text-zinc-500 text-sm">Enter project details.</p>
-              </div>
-
-              <form onSubmit={handleCreateProject} className="space-y-8">
-                <div className="space-y-3">
-                  <label className="label-micro text-left block">Project Title</label>
-                  <input
-                    autoFocus
-                    required
-                    type="text"
-                    placeholder="e.g. THE NEON VELVET"
-                    className="input-field bg-black/50"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="label-micro text-left block">Director</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Greta Gerwig"
-                    className="input-field bg-black/50"
-                    value={director}
-                    onChange={(e) => setDirector(e.target.value)}
-                  />
-                </div>
-                <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base shadow-lg shadow-brand-cyan/20">
-                  Create Project
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                <div className="mb-10 text-left">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Create Shotlist</h2>
+                  <p className="text-zinc-500 text-sm">Enter project details.</p>
+                </div>
+
+                <form onSubmit={handleCreateProject} className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block">Project Title</label>
+                    <input
+                      autoFocus
+                      required
+                      type="text"
+                      placeholder="e.g. The Iron Lung"
+                      className="input-field bg-black/50"
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block">Director</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Syair Adharian"
+                      className="input-field bg-black/50"
+                      value={director}
+                      onChange={(e) => setDirector(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block">Director of Photography</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Arga Yura"
+                      className="input-field bg-black/50"
+                      value={dp}
+                      onChange={(e) => setDp(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base shadow-lg shadow-brand-cyan/20 cursor-pointer">
+                    Create Shotlist
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
     </>
   );

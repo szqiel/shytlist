@@ -52,7 +52,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-bg relative overflow-x-hidden flex flex-col">
+    <div className={`min-h-[100dvh] ${location.pathname.match(/^\/projects\/.+/) ? 'h-[100dvh] overflow-hidden' : ''} bg-bg relative overflow-x-hidden flex flex-col`}>
       {/* Background Noise Overlay */}
       <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
@@ -104,9 +104,10 @@ export default function Layout({ children }: LayoutProps) {
                 <AnimatePresence>
                   {showUserMenu && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      style={{ transformOrigin: 'top right' }}
                       transition={{ type: "spring", stiffness: 100, damping: 20 }}
                       className="absolute right-0 mt-3 w-48 bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl p-2 z-[60] backdrop-blur-xl"
                     >
@@ -138,21 +139,23 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Page Content */}
-      <main className={`flex-1 relative z-10 w-full ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4' : 'px-6 md:px-12 py-16 max-w-7xl mx-auto'}`}>
+      <main className={`flex-1 relative z-10 w-full min-h-0 ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4 flex flex-col overflow-hidden' : 'px-6 md:px-12 py-16 max-w-7xl mx-auto'}`}>
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-white/5 py-16 px-6 md:px-12 text-center relative z-10">
-        <p className="text-zinc-600 text-sm font-medium uppercase tracking-widest flex items-center justify-center gap-3">
-          <span className="w-8 h-px bg-white/5"></span>
-          © {new Date().getFullYear()} szqiel
-          <span className="w-8 h-px bg-white/5"></span>
-        </p>
-        <p className="text-zinc-700 text-[10px] mt-4 font-medium uppercase tracking-[0.2em]">
-          Built for Director of Photography
-        </p>
-      </footer>
+      {!location.pathname.match(/^\/projects\/.+/) && (
+        <footer className="mt-auto border-t border-white/5 py-16 px-6 md:px-12 text-center relative z-10">
+          <p className="text-zinc-600 text-sm font-medium uppercase tracking-widest flex items-center justify-center gap-3">
+            <span className="w-8 h-px bg-white/5"></span>
+            © {new Date().getFullYear()} szqiel
+            <span className="w-8 h-px bg-white/5"></span>
+          </p>
+          <p className="text-zinc-700 text-[10px] mt-4 font-medium uppercase tracking-[0.2em]">
+            Built for Director of Photography
+          </p>
+        </footer>
+      )}
     </div>
   );
 }

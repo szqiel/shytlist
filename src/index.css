@@ -75,22 +75,22 @@
 
   .btn-primary {
     @apply px-5 py-2.5 bg-brand-cyan text-black font-semibold rounded-xl hover:bg-cyan-400 active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight shadow-[0_0_20px_-5px_rgba(55,202,255,0.3)];
-    transition: transform 700ms var(--ease-spring), background-color 700ms var(--ease-spring), box-shadow 700ms var(--ease-spring);
+    transition: transform 180ms var(--ease-spring), background-color 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
   }
 
   .btn-accent {
     @apply px-5 py-2.5 bg-brand-yellow text-black font-semibold rounded-xl hover:bg-yellow-400 active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight shadow-[0_0_20px_-5px_rgba(255,232,55,0.3)];
-    transition: transform 700ms var(--ease-spring), background-color 700ms var(--ease-spring), box-shadow 700ms var(--ease-spring);
+    transition: transform 180ms var(--ease-spring), background-color 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
   }
 
   .btn-outline {
     @apply px-5 py-2.5 bg-transparent border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 text-zinc-300 font-medium rounded-lg active:scale-[0.97] flex items-center justify-center gap-2 text-sm tracking-tight;
-    transition: transform 700ms var(--ease-spring), background-color 700ms var(--ease-spring), border-color 700ms var(--ease-spring), color 700ms var(--ease-spring);
+    transition: transform 180ms var(--ease-spring), background-color 180ms var(--ease-spring), border-color 180ms var(--ease-spring), color 180ms var(--ease-spring);
   }
 
   .input-field {
     @apply w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/20 placeholder:text-zinc-600;
-    transition: border-color 700ms var(--ease-spring), box-shadow 700ms var(--ease-spring);
+    transition: border-color 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
   }
 
   select.input-field {
@@ -99,6 +99,11 @@
     background-position: right 0.75rem center;
     background-repeat: no-repeat;
     background-size: 1em 1em;
+  }
+
+  select.input-field option {
+    background-color: #0a0a0a;
+    color: #e4e4e7;
   }
 
   .label-micro {

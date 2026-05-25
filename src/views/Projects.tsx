@@ -1,4 +1,5 @@
 import { useState, useEffect, MouseEvent, FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash, ArrowUpRight, FilmSlate, User, Calendar, X, CircleNotch } from '@phosphor-icons/react';
 import { Helmet } from 'react-helmet-async';
@@ -18,6 +19,7 @@ export default function Projects() {
   const [projectName, setProjectName] = useState('');
   const [director, setDirector] = useState('');
   const [dp, setDp] = useState('');
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,23 +83,28 @@ export default function Projects() {
     }
   };
 
-  const deleteProject = async (id: string, e: MouseEvent) => {
+  const handleDeleteClick = (id: string, e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm('Delete this project and all its shotlists?')) {
-      try {
-        const { error } = await supabase
-          .from('projects')
-          .delete()
-          .eq('id', id);
+    setProjectToDelete(id);
+  };
 
-        if (error) throw error;
-        setProjects(projects.filter((p) => p.id !== id));
-        toast.success('Project deleted');
-      } catch (error) {
-        console.error('Error deleting project:', error);
-        toast.error('Failed to delete project');
-      }
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
+    const id = projectToDelete;
+    setProjectToDelete(null);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setProjects(projects.filter((p) => p.id !== id));
+      toast.success('Project deleted');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error('Failed to delete project');
     }
   };
 
@@ -194,7 +201,7 @@ export default function Projects() {
                           <FilmSlate className="w-6 h-6 text-zinc-500 group-hover:text-black transition-colors duration-700" />
                         </div>
                         <button
-                          onClick={(e) => deleteProject(project.id, e)}
+                          onClick={(e) => handleDeleteClick(project.id, e)}
                           className="p-3 bg-zinc-950/50 rounded-xl border border-white/5 text-zinc-600 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/10 transition-all duration-300 z-30"
                           title="Delete Project"
                         >
@@ -253,78 +260,134 @@ export default function Projects() {
       )}
 
       {/* Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-bg/90 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={springConfig}
-              className="relative w-full max-w-lg glass p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
-            >
-              <button
+      {createPortal(
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                className="absolute inset-0 bg-bg/90 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={springConfig}
+                className="relative w-full max-w-lg glass p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
               >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-10 text-left">
-                <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Create Project</h2>
-                <p className="text-zinc-500 text-sm">Enter project details.</p>
-              </div>
-
-              <form onSubmit={handleCreateProject} className="space-y-8">
-                <div className="space-y-3">
-                  <label className="label-micro text-left block font-medium">Project Title</label>
-                  <input
-                    autoFocus
-                    required
-                    type="text"
-                    placeholder="e.g. THE NEON VELVET"
-                    className="input-field bg-black/50"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="label-micro text-left block font-medium">Director</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Greta Gerwig"
-                    className="input-field bg-black/50"
-                    value={director}
-                    onChange={(e) => setDirector(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="label-micro text-left block font-medium">Director of Photography</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Roger Deakins"
-                    className="input-field bg-black/50"
-                    value={dp}
-                    onChange={(e) => setDp(e.target.value)}
-                  />
-                </div>
-                <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base shadow-lg shadow-brand-cyan/20">
-                  Create Project
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                <div className="mb-10 text-left">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Create Shotlist</h2>
+                  <p className="text-zinc-500 text-sm">Enter project details.</p>
+                </div>
+
+                <form onSubmit={handleCreateProject} className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block font-medium">Project Title</label>
+                    <input
+                      autoFocus
+                      required
+                      type="text"
+                      placeholder="e.g. The Iron Lung"
+                      className="input-field bg-black/50"
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block font-medium">Director</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Syair Adharian"
+                      className="input-field bg-black/50"
+                      value={director}
+                      onChange={(e) => setDirector(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="label-micro text-left block font-medium">Director of Photography</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Arga Yura"
+                      className="input-field bg-black/50"
+                      value={dp}
+                      onChange={(e) => setDp(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary w-full py-5 mt-6 font-semibold rounded-xl text-base shadow-lg shadow-brand-cyan/20 cursor-pointer">
+                    Create Shotlist
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {createPortal(
+        <AnimatePresence>
+          {projectToDelete && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setProjectToDelete(null)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={springConfig}
+                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+              >
+                <button
+                  onClick={() => setProjectToDelete(null)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-8">
+                  <h2 className="text-3xl font-semibold text-white tracking-tight mb-3">Delete Project</h2>
+                  <p className="text-zinc-500 text-sm leading-relaxed font-medium">
+                    Are you sure you want to delete this project and all its shotlists? This action cannot be undone.
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={confirmDeleteProject}
+                    className="flex-1 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 font-bold rounded-xl transition-all duration-300 active:scale-[0.97] text-sm cursor-pointer"
+                  >
+                    Delete Project
+                  </button>
+                  <button
+                    onClick={() => setProjectToDelete(null)}
+                    className="btn-outline flex-1 py-4 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
     </>
   );
