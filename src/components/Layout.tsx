@@ -52,84 +52,93 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-bg relative overflow-x-hidden flex flex-col">
-      {/* Background Effect */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.02] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+    <div className="min-h-[100dvh] bg-bg relative overflow-x-hidden flex flex-col">
+      {/* Background Noise Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-      {/* Navigation */}
-      <nav className="h-20 bg-nav/80 backdrop-blur-md border-b border-white/5 px-8 flex items-center justify-between z-50 sticky top-0">
-        <Link to="/" className="flex items-center gap-3 group">
-          <Logo size="md" className="transition-all duration-300 group-hover:scale-105" />
-          <div className="flex flex-col">
-            <span className="text-lg font-semibold tracking-tight text-white leading-none">Shyt<span className="text-brand-cyan">list</span></span>
-          </div>
-        </Link>
+      {/* Ambient Breathing Background Mesh Glows */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-25%] left-[-15%] w-[60vw] h-[60vw] rounded-full bg-brand-cyan/8 blur-[140px] animate-float-cyan"></div>
+        <div className="absolute bottom-[-25%] right-[-15%] w-[60vw] h-[60vw] rounded-full bg-brand-yellow/4 blur-[140px] animate-float-yellow"></div>
+      </div>
 
-        <div className="flex items-center gap-3 md:gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 rounded-lg ${
-                location.pathname === item.path 
-                  ? 'text-brand-cyan bg-brand-cyan/10' 
-                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span className="hidden md:flex font-medium">{item.name}</span>
-            </Link>
-          ))}
-          <div className="h-8 w-px bg-white/5 ml-2 hidden md:block"></div>
-          
-          {user ? (
-            <div className="relative" ref={menuRef}>
-              <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 group cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl border border-brand-cyan/30 bg-zinc-900 flex items-center justify-center transition-all group-hover:border-brand-cyan">
-                   <span className="text-xs font-semibold text-zinc-100 uppercase">{getInitials(user.email)}</span>
-                </div>
-                <CaretDown weight="bold" className={`w-3 h-3 text-zinc-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showUserMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/5 rounded-xl shadow-2xl p-2 z-[60]"
-                  >
-                    <div className="px-3 py-2 border-b border-white/5 mb-1">
-                      <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Account</p>
-                      <p className="text-xs text-zinc-300 truncate font-medium">{user.email}</p>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <SignOut className="w-4 h-4" />
-                      Logout
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+      {/* Navigation Floating Capsule */}
+      <div className="sticky top-4 z-50 w-full px-4 md:px-0">
+        <nav className="mx-auto w-full max-w-5xl bg-zinc-950/60 backdrop-blur-xl border border-white/10 px-6 py-2.5 rounded-full flex items-center justify-between shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]">
+          <Link to="/" className="flex items-center gap-3 group">
+            <Logo size="md" className="transition-all duration-300 group-hover:scale-105" />
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold tracking-tight text-white leading-none">Shyt<span className="text-brand-cyan">list</span></span>
             </div>
-          ) : (
-            <Link 
-              to="/auth" 
-              className="text-sm font-medium text-brand-cyan hover:text-cyan-300 transition-colors"
-            >
-              Login
-            </Link>
-          )}
-        </div>
-      </nav>
+          </Link>
+
+          <div className="flex items-center gap-2 md:gap-4">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-2 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] px-4 py-2 rounded-full ${
+                  location.pathname === item.path 
+                    ? 'text-brand-cyan bg-brand-cyan/10' 
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span className="hidden md:flex font-semibold">{item.name}</span>
+              </Link>
+            ))}
+            <div className="h-6 w-px bg-white/10 ml-2 hidden md:block"></div>
+            
+            {user ? (
+              <div className="relative" ref={menuRef}>
+                <button 
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-full border border-brand-cyan/30 bg-zinc-900 flex items-center justify-center transition-all duration-300 group-hover:border-brand-cyan">
+                     <span className="text-xs font-semibold text-zinc-100 uppercase">{getInitials(user.email)}</span>
+                  </div>
+                  <CaretDown weight="bold" className={`w-3 h-3 text-zinc-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {showUserMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                      className="absolute right-0 mt-3 w-48 bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl p-2 z-[60] backdrop-blur-xl"
+                    >
+                      <div className="px-3 py-2 border-b border-white/5 mb-1">
+                        <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Account</p>
+                        <p className="text-xs text-zinc-300 truncate font-semibold">{user.email}</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors duration-200"
+                      >
+                        <SignOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link 
+                to="/auth" 
+                className="text-sm font-semibold text-brand-cyan hover:text-cyan-300 transition-colors duration-300 px-3 py-1.5"
+              >
+                Login
+              </Link>
+            )}
+          </div>
+        </nav>
+      </div>
 
       {/* Page Content */}
-      <main className={`flex-1 relative z-10 w-full ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4' : 'px-6 md:px-12 py-12 max-w-7xl mx-auto'}`}>
+      <main className={`flex-1 relative z-10 w-full ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4' : 'px-6 md:px-12 py-16 max-w-7xl mx-auto'}`}>
         {children}
       </main>
 

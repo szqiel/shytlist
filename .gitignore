@@ -6,7 +6,6 @@ coverage/
 *.log
 .env*
 client_secret_google.json
-OVERVIEW.md
+*.md
 .impeccable
-PRODUCT.md
-DESIGN.md
+!README.md

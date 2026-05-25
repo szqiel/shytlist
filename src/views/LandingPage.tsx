@@ -79,14 +79,14 @@ export default function LandingPage() {
         <meta name="twitter:description" content="Lazy making shotlists? Just Shytlist. The modern, frictionless, and dark-mode optimized shotlist creator designed for indie filmmakers and agile commercial workflows." />
         <meta name="twitter:image" content="https://shytlist.vercel.app/logo.svg" />
       </Helmet>
-      <div className="flex flex-col md:flex-row items-center justify-between min-h-[70vh] pt-12 md:pt-20 gap-16 md:gap-8 max-w-7xl mx-auto w-full">
+      <div className="flex flex-col md:flex-row items-center justify-between min-h-[75dvh] py-24 md:py-32 gap-16 md:gap-8 max-w-7xl mx-auto w-full relative z-10">
       
       {/* Left Content */}
       <div className="flex-1 w-full max-w-2xl text-left relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
           className="mb-8"
         >
           <h1 className="text-6xl md:text-[80px] lg:text-[100px] font-semibold tracking-tighter mb-6 leading-[0.85] text-white">
@@ -115,11 +115,12 @@ export default function LandingPage() {
             type: "spring", stiffness: 100, damping: 20
           }}
           onClick={() => setIsModalOpen(true)}
-          className="btn-primary py-5 px-10 text-base font-semibold shadow-[0_0_40px_-10px_var(--color-brand-cyan)] hover:shadow-[0_0_60px_-10px_var(--color-brand-cyan)] rounded-xl group relative overflow-hidden"
+          className="pl-8 pr-3 py-3 bg-brand-cyan text-black font-semibold rounded-full hover:bg-cyan-400 active:scale-[0.98] flex items-center justify-center gap-4 text-base tracking-tight shadow-[0_0_30px_-5px_rgba(55,202,255,0.35)] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-          <Plus className="w-5 h-5 -ml-2 relative z-10" />
-          <span className="relative z-10">Create Project</span>
+          <span className="relative z-10 font-bold">Create Project</span>
+          <div className="w-9 h-9 rounded-full bg-black/10 flex items-center justify-center relative z-10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105 group-hover:rotate-90">
+            <Plus weight="bold" className="w-4 h-4" />
+          </div>
         </motion.button>
       </div>
 
@@ -137,31 +138,34 @@ export default function LandingPage() {
           }}
           className="relative w-full max-w-md h-full"
         >
-          {/* Main Card */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-96 glass rounded-3xl p-6 flex flex-col justify-between z-20 shadow-2xl">
-            <div className="space-y-6">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center shadow-inner">
-                <Logo size="sm" />
-              </div>
-              <div className="space-y-2">
-                <div className="w-32 h-2.5 bg-zinc-800 rounded-full"></div>
-                <div className="w-20 h-2 bg-zinc-800/50 rounded-full"></div>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="w-full h-14 bg-zinc-900/50 rounded-2xl border border-white/5 flex items-center px-4 relative overflow-hidden">
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]" style={{ animationDelay: `${i * 0.2}s` }} />
-                   <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center mr-4 shadow-inner">
-                      <div className="w-3 h-3 rounded-full bg-brand-cyan/20 border border-brand-cyan/50"></div>
-                   </div>
-                   <div className="flex-1 space-y-2">
-                     <div className="w-1/2 h-1.5 bg-zinc-700 rounded-full"></div>
-                     <div className="w-1/3 h-1.5 bg-zinc-800 rounded-full"></div>
-                   </div>
+          {/* Main Card - Outer Doppelrand Shell */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[410px] doppelrand-shell p-2 z-20">
+            {/* Inner Doppelrand Core */}
+            <div className="w-full h-full doppelrand-core p-6 flex flex-col justify-between">
+              <div className="space-y-6">
+                <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shadow-inner">
+                  <Logo size="sm" />
                 </div>
-              ))}
+                <div className="space-y-2">
+                  <div className="w-32 h-2.5 bg-zinc-800 rounded-full"></div>
+                  <div className="w-20 h-2 bg-zinc-800/40 rounded-full"></div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-full h-[52px] bg-zinc-900/60 rounded-[14px] border border-white/5 flex items-center px-3 relative overflow-hidden">
+                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]" style={{ animationDelay: `${i * 0.2}s` }} />
+                     <div className="w-7 h-7 rounded-[8px] bg-zinc-850 flex items-center justify-center mr-3 shadow-inner border border-white/5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-brand-cyan/20 border border-brand-cyan/50"></div>
+                     </div>
+                     <div className="flex-1 space-y-2">
+                       <div className="w-1/2 h-1.5 bg-zinc-700/80 rounded-full"></div>
+                       <div className="w-1/3 h-1 bg-zinc-800/60 rounded-full"></div>
+                     </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

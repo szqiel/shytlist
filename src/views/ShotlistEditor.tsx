@@ -731,19 +731,19 @@ export default function ShotlistEditor() {
         <title>{project ? `${project.title} | Shotlist Editor - Shytlist` : "Shotlist Editor - Shytlist"}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <div className="flex flex-col h-full bg-bg overflow-hidden min-h-[calc(100vh-64px)]">
+      <div className="flex flex-col h-full bg-zinc-950/20 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl min-h-[calc(100dvh-120px)] relative z-10">
       <div className="flex h-full flex-1 overflow-hidden">
         {/* Sidebar Project Info */}
-        <aside className="w-72 bg-zinc-950 border-r border-white/5 p-6 hidden lg:flex flex-col gap-10">
+        <aside className="w-72 bg-black/15 border-r border-white/5 p-6 hidden lg:flex flex-col gap-8 overflow-y-auto backdrop-blur-md">
           <div className="space-y-4">
             <button 
               onClick={() => navigate('/projects')}
-              className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-xs font-medium uppercase tracking-widest"
+              className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors duration-300 text-xs font-semibold uppercase tracking-widest"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Projects
             </button>
-            <div className="pt-4">
+            <div className="pt-2">
               {isEditingInfo ? (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -779,88 +779,96 @@ export default function ShotlistEditor() {
               ) : (
                 <div className="cursor-pointer group/info relative" onClick={() => setIsEditingInfo(true)}>
                   <div className="absolute -inset-2 rounded-xl bg-white/[0.02] opacity-0 group-hover/info:opacity-100 transition-opacity"></div>
-                  <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white group-hover/info:text-brand-cyan transition-colors relative z-10">{project.title}</h2>
-                  <p className="text-brand-yellow font-medium mt-1 relative z-10">Dir. {project.director}</p>
-                  <p className="text-zinc-500 text-sm font-medium relative z-10">DP. {project.dp}</p>
+                  <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white group-hover/info:text-brand-cyan transition-colors duration-700 relative z-10">{project.title}</h2>
+                  <p className="text-brand-yellow font-semibold mt-1 relative z-10 text-xs">Dir. {project.director}</p>
+                  <p className="text-zinc-500 text-xs font-semibold relative z-10">DP. {project.dp}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* PRODUCTION ESTIMATE DASHBOARD */}
-            <div className="p-6 bg-zinc-900/50 rounded-2xl border border-white/5 space-y-5">
-              <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-                <Clock className="w-3.5 h-3.5 text-brand-cyan" />
-                <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Production Estimate</p>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Shooting</span>
-                  <p className="text-sm font-semibold text-white">{productionMetrics.shootingDuration}</p>
+            <div className="p-1 bg-white/[0.01] border border-white/5 rounded-[1.5rem]">
+              <div className="p-5 bg-zinc-900/40 rounded-[calc(1.5rem-0.25rem)] border border-white/10 space-y-4">
+                <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                  <Clock className="w-3.5 h-3.5 text-brand-cyan" />
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Production Estimate</p>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Setups</span>
-                  <p className="text-sm font-semibold text-zinc-400">{productionMetrics.setupDuration}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Shooting</span>
+                    <p className="text-xs font-bold text-white">{productionMetrics.shootingDuration}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Setups</span>
+                    <p className="text-xs font-bold text-zinc-400">{productionMetrics.setupDuration}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Trans.</span>
+                    <p className="text-xs font-bold text-zinc-400">{productionMetrics.transitionDuration}</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Transitions</span>
-                  <p className="text-sm font-semibold text-zinc-400">{productionMetrics.transitionDuration}</p>
+                <div className="pt-1 space-y-2">
+                  <div className="bg-brand-cyan/5 rounded-xl p-3 border border-brand-cyan/10">
+                    <span className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest block mb-0.5">Estimated Day</span>
+                    <p className="text-xl font-bold text-white tracking-tight">{productionMetrics.totalDuration}</p>
+                  </div>
+                  <div className="bg-brand-yellow/5 rounded-xl p-3 border border-brand-yellow/10">
+                    <span className="text-[9px] text-brand-yellow font-bold uppercase tracking-widest block mb-0.5">Film Duration</span>
+                    <p className="text-xl font-bold text-white tracking-tight">{productionMetrics.filmDuration}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="pt-2 space-y-3">
-                <div className="bg-brand-cyan/5 rounded-xl p-3 border border-brand-cyan/10">
-                  <span className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest block mb-1">Estimated Day</span>
-                  <p className="text-2xl font-bold text-white tracking-tight">{productionMetrics.totalDuration}</p>
+                <div className="flex justify-between items-center text-[9px] font-bold text-zinc-500 uppercase tracking-widest border-t border-white/5 pt-2">
+                  <span>{productionMetrics.sceneCount} Scenes</span>
+                  <span>{shots.length} Shots</span>
                 </div>
-                <div className="bg-brand-yellow/5 rounded-xl p-3 border border-brand-yellow/10">
-                  <span className="text-[9px] text-brand-yellow font-bold uppercase tracking-widest block mb-1">Film Duration</span>
-                  <p className="text-2xl font-bold text-white tracking-tight">{productionMetrics.filmDuration}</p>
-                </div>
-              </div>
-              <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                <span>{productionMetrics.sceneCount} Scenes</span>
-                <span>{shots.length} Shots</span>
               </div>
             </div>
 
             {/* BRANDING LOGO */}
-            <div className="p-6 bg-zinc-900/50 rounded-2xl border border-white/5 space-y-4">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold border-b border-white/5 pb-3">Production Branding</p>
-              <div 
-                className="aspect-video bg-zinc-950 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-yellow/30 transition-all group overflow-hidden relative"
-                onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleLogoUpload(file); }; input.click(); }}
-              >
-                {project.company_logo_url ? <img src={project.company_logo_url} alt="Logo" className="w-full h-full object-contain p-4" /> : <> <Upload className="w-4 h-4 text-zinc-600 group-hover:text-brand-yellow transition-colors" /> <span className="text-[10px] text-zinc-600 font-bold uppercase">Upload Logo</span> </>}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"> <span className="text-[10px] text-white font-bold uppercase">Change Logo</span> </div>
+            <div className="p-1 bg-white/[0.01] border border-white/5 rounded-[1.5rem]">
+              <div className="p-5 bg-zinc-900/40 rounded-[calc(1.5rem-0.25rem)] border border-white/10 space-y-3">
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold border-b border-white/5 pb-2">Production Branding</p>
+                <div 
+                  className="aspect-video bg-zinc-950 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-yellow/30 transition-all duration-500 group overflow-hidden relative"
+                  onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleLogoUpload(file); }; input.click(); }}
+                >
+                  {project.company_logo_url ? <img src={project.company_logo_url} alt="Logo" className="w-full h-full object-contain p-4" /> : <> <Upload className="w-4 h-4 text-zinc-600 group-hover:text-brand-yellow transition-colors" /> <span className="text-[10px] text-zinc-600 font-bold uppercase">Upload Logo</span> </>}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"> <span className="text-[10px] text-white font-bold uppercase">Change Logo</span> </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold mb-1">Export & Share</p>
-              <button onClick={() => setIsExportModalOpen(true)} className="btn-primary w-full justify-center gap-3 py-3"> <FileArrowDown className="w-4 h-4" /> <span>Export Settings</span> </button>
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-0.5">Export & Share</p>
+              <button onClick={() => setIsExportModalOpen(true)} className="btn-primary w-full justify-center gap-3 py-3 font-semibold rounded-full"> <FileArrowDown className="w-4 h-4" /> <span>Export Settings</span> </button>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <p className="label-micro opacity-50">Quick Presets</p>
-              {[
-                { type: 'master_coverage', label: 'Establish', sub: '3 shots (Master, A, B)' },
-                { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, OTS A, OTS B)' },
-                { type: 'detail_coverage', label: 'Detail / Macro Pkg', sub: '3 shots (CU, 2x ECU)' }
-              ].map(p => (
-                <button key={p.type} onClick={() => addSequence(p.type as any)} className="w-full bg-zinc-900 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-3 transition-all group flex items-center gap-3 text-left">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors"> <Copy className="w-4 h-4 text-brand-cyan" /> </div>
-                  <div> <p className="text-[10px] font-bold text-white uppercase tracking-wider">{p.label}</p> <p className="text-[9px] text-zinc-500 font-medium">{p.sub}</p> </div>
-                </button>
-              ))}
+            <div className="p-1 bg-white/[0.01] border border-white/5 rounded-[1.5rem]">
+              <div className="p-5 bg-zinc-900/40 rounded-[calc(1.5rem-0.25rem)] border border-white/10 space-y-3">
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold border-b border-white/5 pb-2">Quick Presets</p>
+                <div className="space-y-2">
+                  {[
+                    { type: 'master_coverage', label: 'Establish', sub: '3 shots (Master, A, B)' },
+                    { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, OTS A, OTS B)' },
+                    { type: 'detail_coverage', label: 'Detail / Macro Pkg', sub: '3 shots (CU, 2x ECU)' }
+                  ].map(p => (
+                    <button key={p.type} onClick={() => addSequence(p.type as any)} className="w-full bg-zinc-950 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-2.5 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group flex items-center gap-3 text-left">
+                      <div className="w-7 h-7 rounded-lg bg-zinc-900 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors"> <Copy className="w-3.5 h-3.5 text-brand-cyan" /> </div>
+                      <div> <p className="text-[9px] font-bold text-white uppercase tracking-wider">{p.label}</p> <p className="text-[8px] text-zinc-500 font-semibold">{p.sub}</p> </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </aside>
 
         {/* Main Editor Section */}
-        <section className="flex-1 flex flex-col bg-bg overflow-hidden">
+        <section className="flex-1 flex flex-col bg-transparent overflow-hidden">
           {/* Mobile Header */}
-          <div className="lg:hidden p-6 bg-nav border-b border-white/5 flex justify-between items-center">
+          <div className="lg:hidden p-6 bg-black/20 backdrop-blur-md border-b border-white/5 flex justify-between items-center">
             <div className="flex items-center gap-4">
                <button onClick={() => navigate('/projects')} className="text-zinc-500 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
                <h2 className="text-lg font-semibold text-white tracking-tight truncate max-w-[200px]">{project.title}</h2>
@@ -870,15 +878,15 @@ export default function ShotlistEditor() {
             </div>
           </div>
 
-          <div className="px-6 md:px-8 py-4 bg-zinc-950 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 bg-zinc-900 p-1 rounded-xl border border-white/5 w-full sm:w-auto overflow-x-auto">
+          <div className="px-6 md:px-8 py-4 bg-black/15 backdrop-blur-md border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-xl border border-white/5 w-full sm:w-auto overflow-x-auto">
               <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <List className="w-4 h-4" /> Table View </button>
               <button onClick={() => setViewMode('gallery')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <SquaresFour className="w-4 h-4" /> Gallery View </button>
             </div>
             <div className="flex items-center gap-4"> <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">Showing {shots.length} Shots</span> </div>
           </div>
 
-          <div className="px-8 py-6 bg-nav border-b border-white/5">
+          <div className="px-8 py-6 bg-black/10 border-b border-white/5">
             <form onSubmit={addShot} className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-3 items-end">
               <div className="md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-1"> <label className="label-micro">Scene</label> <select className="input-field" value={newShot.scene_no} onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}> {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
@@ -990,15 +998,17 @@ export default function ShotlistEditor() {
                                         {sceneShots.map((shot, index) => (
                                           <DraggableAny key={shot.id} draggableId={shot.id} index={index}>
                                             {(p: any, s: any) => renderDraggable((provided: any, snapshot: any) => (
-                                              <div ref={provided.innerRef} {...provided.draggableProps} className={`group bg-zinc-950 border border-white/5 rounded-2xl overflow-hidden transition-all ${snapshot.isDragging ? 'ring-2 ring-brand-cyan' : ''}`}>
-                                                <div className="aspect-video bg-zinc-900 relative cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
-                                                  {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="w-6 h-6 text-zinc-700" /><span className="text-[10px] text-zinc-600 font-bold uppercase">No Visual</span></div>}
-                                                  <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-brand-cyan mono">#{shot.shot_no}</div>
-                                                  <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 opacity-0 group-hover:opacity-100"><DotsSixVertical /></div>
-                                                </div>
-                                                <div className="p-4 space-y-4">
-                                                  <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase">{shot.lens} • {shot.movement}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
-                                                  <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3 h-12">{shot.description}</p>
+                                              <div ref={provided.innerRef} {...provided.draggableProps} className={`p-1 bg-white/[0.01] border border-white/5 rounded-[1.5rem] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group ${snapshot.isDragging ? 'ring-2 ring-brand-cyan' : ''}`}>
+                                                <div className="bg-zinc-950 border border-white/10 rounded-[calc(1.5rem-0.25rem)] overflow-hidden">
+                                                  <div className="aspect-video bg-zinc-900 relative cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
+                                                    {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="w-6 h-6 text-zinc-700" /><span className="text-[10px] text-zinc-600 font-bold uppercase">No Visual</span></div>}
+                                                    <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-brand-cyan mono">#{shot.shot_no}</div>
+                                                    <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 opacity-0 group-hover:opacity-100"><DotsSixVertical /></div>
+                                                  </div>
+                                                  <div className="p-4 space-y-4">
+                                                    <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase">{shot.lens} • {shot.movement}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
+                                                    <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3 h-12">{shot.description}</p>
+                                                  </div>
                                                 </div>
                                               </div>
                                             ))(p, s)}

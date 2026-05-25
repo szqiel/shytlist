@@ -118,37 +118,54 @@ export default function Projects() {
           whileTap={{ scale: 0.98 }}
           transition={springConfig}
           onClick={() => setIsModalOpen(true)}
-          className="px-8 py-3 bg-brand-yellow text-black font-semibold rounded-xl hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 text-sm tracking-tight shadow-[0_0_30px_-10px_var(--color-brand-yellow)] group relative overflow-hidden"
+          className="pl-6 pr-2.5 py-2.5 bg-brand-yellow text-black font-semibold rounded-full hover:bg-yellow-400 flex items-center justify-center gap-3 text-sm tracking-tight shadow-[0_0_20px_-5px_rgba(255,232,55,0.4)] group relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-          <Plus className="w-5 h-5 -ml-1 relative z-10" />
-          <span className="relative z-10">New Project</span>
+          <span className="relative z-10 font-bold">New Project</span>
+          <div className="w-7 h-7 rounded-full bg-black/10 flex items-center justify-center relative z-10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105 group-hover:rotate-90">
+            <Plus weight="bold" className="w-3.5 h-3.5" />
+          </div>
         </motion.button>
       </div>
 
       {isLoading ? (
-        <div className="py-32 text-center flex flex-col items-center justify-center">
-          <CircleNotch className="w-10 h-10 text-brand-cyan mb-6 animate-spin" />
-          <div className="w-32 h-1 bg-zinc-900 rounded-full overflow-hidden">
-             <div className="h-full bg-brand-cyan animate-[shimmer_1.5s_infinite] w-1/2"></div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="doppelrand-shell p-2 h-[280px] opacity-60 animate-pulse">
+              <div className="w-full h-full doppelrand-core p-8 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="w-14 h-14 bg-zinc-900 border border-white/5 rounded-2xl"></div>
+                  <div className="w-8 h-8 bg-zinc-900 border border-white/5 rounded-xl"></div>
+                </div>
+                <div className="space-y-4">
+                  <div className="w-2/3 h-6 bg-zinc-900 rounded-lg"></div>
+                  <div className="w-1/2 h-4 bg-zinc-900 rounded-md"></div>
+                </div>
+                <div className="border-t border-white/5 pt-4 flex justify-between items-center">
+                  <div className="w-20 h-4 bg-zinc-900 rounded-md"></div>
+                  <div className="w-16 h-3 bg-zinc-900 rounded-md"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : projects.length === 0 ? (
         <motion.div 
            initial={{ opacity: 0, y: 20 }}
            animate={{ opacity: 1, y: 0 }}
            transition={springConfig}
-           className="py-32 text-center rounded-[2.5rem] glass"
+           className="py-32 text-center rounded-[2.5rem] doppelrand-shell p-2"
         >
-          <motion.div 
-            animate={{ y: [-5, 5, -5] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="w-16 h-16 rounded-2xl bg-zinc-900/50 border border-white/5 flex items-center justify-center mx-auto mb-6 shadow-inner"
-          >
-            <FilmSlate className="w-8 h-8 text-zinc-600" />
-          </motion.div>
-          <h3 className="text-zinc-300 font-semibold text-xl tracking-tight">No active projects</h3>
-          <p className="text-zinc-500 mt-2 max-w-sm mx-auto">You don't have any shotlists yet. Create your first project to start planning your shoot.</p>
+          <div className="w-full h-full doppelrand-core py-16 px-6">
+            <motion.div 
+              animate={{ y: [-5, 5, -5] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-16 h-16 rounded-2xl bg-zinc-900/50 border border-white/10 flex items-center justify-center mx-auto mb-6 shadow-inner"
+            >
+              <FilmSlate className="w-8 h-8 text-zinc-600" />
+            </motion.div>
+            <h3 className="text-zinc-300 font-semibold text-xl tracking-tight">No active projects</h3>
+            <p className="text-zinc-500 mt-2 max-w-sm mx-auto">You don't have any shotlists yet. Create your first project to start planning your shoot.</p>
+          </div>
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -159,67 +176,71 @@ export default function Projects() {
                 <motion.div
                   layout
                   key={project.id}
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 24, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.95, y: -24, filter: 'blur(4px)' }}
                   transition={{ delay: index * 0.05, ...springConfig }}
                   className={isLargeCard ? "md:col-span-2" : "md:col-span-1"}
                 >
-                  <div className="relative group block glass p-8 rounded-[2rem] hover:bg-zinc-900/80 transition-all hover:border-white/10 h-full overflow-hidden">
-                    {/* Hover Glow Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/0 to-brand-cyan/0 group-hover:from-brand-cyan/5 group-hover:to-transparent transition-all duration-500 pointer-events-none" />
-                    
-                    <div className="flex justify-between items-start mb-12 relative z-20">
-                      <div className="w-14 h-14 bg-zinc-950 border border-white/5 rounded-2xl flex items-center justify-center group-hover:bg-brand-cyan group-hover:border-brand-cyan/50 transition-all duration-500 shadow-inner">
-                        <FilmSlate className="w-6 h-6 text-zinc-500 group-hover:text-black transition-colors duration-500" />
-                      </div>
-                      <button
-                        onClick={(e) => deleteProject(project.id, e)}
-                        className="p-3 bg-zinc-950/50 rounded-xl border border-transparent text-zinc-600 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/10 transition-all z-30"
-                        title="Delete Project"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <Link 
-                       to={`/projects/${project.id}`}
-                       className="absolute inset-0 z-10"
-                       aria-label={`Open ${project.title}`}
-                    />
-
-                    <div className="relative z-20 pointer-events-none flex flex-col justify-between h-[calc(100%-6.5rem)]">
-                      <div>
-                        <h3 className={`font-semibold mb-6 text-white tracking-tighter group-hover:text-brand-cyan transition-colors ${isLargeCard ? 'text-4xl' : 'text-2xl'}`}>
-                          {project.title}
-                        </h3>
-
-                        <div className={`grid gap-4 ${isLargeCard ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                          <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/5 flex items-center justify-center"><User className="w-4 h-4 text-zinc-500" /></div>
-                            <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">Dir</span> {project.director}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/5 flex items-center justify-center"><FilmSlate className="w-4 h-4 text-zinc-500" /></div>
-                            <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">DP</span> {project.dp}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/5 flex items-center justify-center"><Calendar className="w-4 h-4 text-zinc-500" /></div>
-                            <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">Created</span> {project.created_at ? new Date(project.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</span>
-                          </div>
+                  {/* Outer Doppelrand Shell */}
+                  <div className="doppelrand-shell p-2 h-full hover:bg-white/[0.04] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group">
+                    {/* Inner Doppelrand Core */}
+                    <div className="w-full h-full doppelrand-core p-8 flex flex-col justify-between">
+                      {/* Hover subtle radial glow */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/0 to-brand-cyan/0 group-hover:from-brand-cyan/5 group-hover:to-transparent transition-all duration-700 pointer-events-none" />
+                      
+                      <div className="flex justify-between items-start mb-12 relative z-20">
+                        <div className="w-14 h-14 bg-zinc-950 border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-brand-cyan group-hover:border-brand-cyan/50 transition-all duration-700 shadow-inner">
+                          <FilmSlate className="w-6 h-6 text-zinc-500 group-hover:text-black transition-colors duration-700" />
                         </div>
+                        <button
+                          onClick={(e) => deleteProject(project.id, e)}
+                          className="p-3 bg-zinc-950/50 rounded-xl border border-white/5 text-zinc-600 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/10 transition-all duration-300 z-30"
+                          title="Delete Project"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
                       </div>
 
-                      <div className="flex items-end justify-between border-t border-white/5 pt-6 mt-8">
-                        <div className="flex items-center gap-3">
-                          <span className="text-brand-yellow font-mono text-2xl tracking-tighter">
-                            {String((project as any).shots?.[0]?.count || 0).padStart(2, '0')}
-                          </span>
-                          <span className="text-xs font-semibold text-zinc-600 uppercase tracking-widest">Shots</span>
+                      <Link 
+                         to={`/projects/${project.id}`}
+                         className="absolute inset-0 z-10"
+                         aria-label={`Open ${project.title}`}
+                      />
+
+                      <div className="relative z-20 pointer-events-none flex flex-col justify-between h-[calc(100%-6.5rem)]">
+                        <div>
+                          <h3 className={`font-semibold mb-6 text-white tracking-tighter group-hover:text-brand-cyan transition-colors duration-700 ${isLargeCard ? 'text-4xl' : 'text-2xl'}`}>
+                            {project.title}
+                          </h3>
+
+                          <div className={`grid gap-4 ${isLargeCard ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/10 flex items-center justify-center"><User className="w-4 h-4 text-zinc-500" /></div>
+                              <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">Dir</span> {project.director}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/10 flex items-center justify-center"><FilmSlate className="w-4 h-4 text-zinc-500" /></div>
+                              <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">DP</span> {project.dp}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-zinc-400 text-sm font-medium">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-900/80 border border-white/10 flex items-center justify-center"><Calendar className="w-4 h-4 text-zinc-500" /></div>
+                              <span className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-zinc-600">Created</span> {project.created_at ? new Date(project.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-zinc-500 font-semibold text-xs uppercase tracking-widest group-hover:text-brand-cyan transition-all">
-                          Open
-                          <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+
+                        <div className="flex items-end justify-between border-t border-white/5 pt-6 mt-8">
+                          <div className="flex items-center gap-3">
+                            <span className="text-brand-yellow font-mono text-2xl tracking-tighter font-semibold">
+                              {String((project as any).shots?.[0]?.count || 0).padStart(2, '0')}
+                            </span>
+                            <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Shots</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs uppercase tracking-widest group-hover:text-brand-cyan transition-all duration-700">
+                            Open
+                            <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-500" />
+                          </div>
                         </div>
                       </div>
                     </div>
