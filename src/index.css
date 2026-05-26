@@ -107,7 +107,7 @@
   }
 
   .label-micro {
-    @apply text-[10px] uppercase tracking-wider font-semibold text-zinc-500 mb-1.5 block;
+    @apply text-[10px] uppercase tracking-wider font-semibold text-zinc-500 mb-1.5 block whitespace-nowrap;
   }
 
   .mono {
