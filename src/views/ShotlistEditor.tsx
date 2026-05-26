@@ -85,11 +85,11 @@ const estimateFilmDuration = (shot: Shot): number => {
 const INITIAL_SHOT_STATE: Omit<Shot, 'id' | 'project_id'> = {
   shot_no: '1',
   scene_no: '1',
-  shot_size: 'Close Up',
+  shot_size: 'Close Up (CU)',
   lens: '35mm',
   movement: 'Static',
   angle: 'Eye Level',
-  framing: 'Standard',
+  framing: 'Rule of Thirds',
   description: '',
 };
 
@@ -97,28 +97,37 @@ const OPTIONS = {
   no: Array.from({ length: 100 }, (_, i) => (i + 1).toString()),
   scene: Array.from({ length: 50 }, (_, i) => (i + 1).toString()),
   shot_size: [
-    "Extreme Wide Shot", "Wide Shot", "Full Shot", "Cowboy Shot", 
-    "Medium Full Shot", "Medium Shot", "Medium Close Up", "Close Up", 
-    "Extreme Close Up", "Insert", "Over the Shoulder", "Point of View", 
-    "Two Shot", "Group Shot"
+    "Extreme Wide Shot (EWS)", "Wide Shot (WS)", "Full Shot (FS)", "Medium Wide Shot (MWS)",
+    "Cowboy Shot (CS)", "Medium Shot (MS)", "Medium Close Up (MCU)", "Close Up (CU)",
+    "Choker Shot (CH)", "Extreme Close Up (ECU)", "Insert Shot (INS)", "Over the Shoulder (OTS)",
+    "Point of View (POV)", "Two Shot (2S)", "Group Shot (GS)", "Establishing Shot (EST)",
+    "Reaction Shot (REA)"
   ],
   lens: [
-    "12mm", "14mm", "16mm", "18mm", "24mm", "28mm", "35mm", "50mm", 
-    "75mm", "85mm", "100mm", "135mm", "200mm", "Macro", "Tilt-Shift"
+    "8mm (Fisheye)", "10mm", "12mm", "14mm", "16mm", "18mm", "21mm", "24mm", "28mm", "32mm",
+    "35mm", "40mm", "50mm", "65mm", "75mm", "85mm", "100mm", "135mm", "150mm", "200mm", "300mm",
+    "Macro", "Tilt-Shift", "Probe Lens", "Zoom Lens (Variable)",
+    "Anamorphic 35mm", "Anamorphic 50mm", "Anamorphic 75mm", "Anamorphic 100mm"
   ],
   movement: [
-    "Static", "Pan Left", "Pan Right", "Tilt Up", "Tilt Down", 
-    "Dolly In", "Dolly Out", "Tracking Left", "Tracking Right", 
-    "Crab Left", "Crab Right", "Steadicam", "Handheld", "Gimbal", 
-    "Crane Up", "Crane Down", "Pedestal Up", "Pedestal Down", 
-    "Zoom In", "Zoom Out", "Drone / Aerial"
+    "Static", "Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Whip Pan", "Whip Tilt",
+    "Dolly In", "Dolly Out", "Push In", "Pull Out", "Tracking Left", "Tracking Right",
+    "Crab Left", "Crab Right", "Dolly Zoom", "Steadicam", "Handheld", "Gimbal", "Shoulder Rig",
+    "Crane Up", "Crane Down", "Pedestal Up", "Pedestal Down", "Jib Up", "Jib Down", "Technocrane",
+    "Drone / Aerial", "Motion Control", "360-Degree Spin"
   ],
   angle: [
-    "Eye Level", "High Angle", "Low Angle", "Dutch Angle", 
-    "Top Down / Overhead", "Bird's Eye View", "Worm's Eye View", 
-    "Shoulder Level", "Hip Level", "Knee Level", "Ground Level"
+    "Eye Level", "Low Angle", "Slight Low Angle", "High Angle", "Slight High Angle",
+    "Dutch Angle (Dutch Tilt)", "Top Down / Overhead", "Bird's Eye View", "Worm's Eye View",
+    "Ground Level", "Knee Level", "Hip Level", "Shoulder Level",
+    "Over-the-Shoulder Angle", "Subjective POV Angle", "Canted Angle"
   ],
-  framing: ['Standard', 'Wide', 'Close', 'Rule of Thirds', 'Symmetric', 'Leading Lines'],
+  framing: [
+    "Rule of Thirds", "Symmetric", "Leading Lines", "Golden Spiral", "Frame-Within-a-Frame",
+    "Off-Center / Negative Space", "Quadrants Layout", "Deep Focus Framing",
+    "Shallow Depth of Field (Bokeh)", "Rack Focus Framing", "Low Key / Chiaroscuro",
+    "High Key Framing"
+  ],
 };
 
 const useDraggableInPortal = () => {
@@ -173,7 +182,7 @@ export default function ShotlistEditor() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<string[]>(ALL_COLUMNS);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
-  const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'detail_coverage' | null>(null);
+  const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'action_chase' | 'suspense_tension' | 'reveal' | null>(null);
   const [presetSceneNo, setPresetSceneNo] = useState('1');
 
   // Load project
@@ -365,7 +374,7 @@ export default function ShotlistEditor() {
     } catch (error) { toast.error('Upload failed'); }
   };
 
-  const addSequence = (type: 'master_coverage' | 'overs_tows' | 'detail_coverage') => {
+  const addSequence = (type: 'master_coverage' | 'overs_tows' | 'action_chase' | 'suspense_tension' | 'reveal') => {
     setPendingPresetType(type);
     setPresetSceneNo(newShot.scene_no);
     setIsPresetModalOpen(true);
@@ -377,21 +386,36 @@ export default function ShotlistEditor() {
     const currentScene = presetSceneNo;
     if (pendingPresetType === 'master_coverage') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot', lens: '16mm', description: 'Establishing Master' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Close Up', description: 'Coverage A' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Close Up', description: 'Coverage B' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot (WS)', lens: '16mm', movement: 'Static', angle: 'Eye Level', description: 'Establishing Master' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Shot (MS)', lens: '35mm', movement: 'Static', angle: 'Eye Level', description: 'Character A Medium Coverage' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Shot (MS)', lens: '35mm', movement: 'Static', angle: 'Eye Level', description: 'Character B Medium Coverage' },
       ];
     } else if (pendingPresetType === 'overs_tows') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Two Shot', lens: '24mm', description: 'Two Shot Profile' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder', description: 'OTS Character 1' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder', description: 'OTS Character 2' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Two Shot (2S)', lens: '24mm', movement: 'Dolly In', angle: 'Eye Level', description: 'Dialogue Profile' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder (OTS)', lens: '50mm', movement: 'Static', angle: 'Eye Level', description: 'OTS Character A' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder (OTS)', lens: '50mm', movement: 'Static', angle: 'Eye Level', description: 'OTS Character B' },
       ];
-    } else if (pendingPresetType === 'detail_coverage') {
+    } else if (pendingPresetType === 'action_chase') {
       sequenceShots = [
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Close Up', lens: '50mm', description: 'Primary Action' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', lens: '75mm', description: 'Detail / Insert 1' },
-        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up', lens: '75mm', description: 'Detail / Insert 2' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Wide Shot (WS)', lens: '18mm', movement: 'Steadicam', angle: 'Low Angle', description: 'Tracking Master' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Medium Shot (MS)', lens: '35mm', movement: 'Handheld', angle: 'Slight Low Angle', description: 'Profile Tracking' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up (ECU)', lens: 'Macro', movement: 'Whip Pan', angle: 'Ground Level', description: 'Impact Detail' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Point of View (POV)', lens: '24mm', movement: 'Handheld', angle: 'Subjective POV Angle', description: 'Subject Tracking' },
+      ];
+    } else if (pendingPresetType === 'suspense_tension') {
+      sequenceShots = [
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Wide Shot (EWS)', lens: '12mm', movement: 'Static', angle: 'High Angle', description: 'Isolating Master' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Close Up (CU)', lens: '85mm', movement: 'Push In', angle: 'Eye Level', description: 'Character Reaction (Slow Push)' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Over the Shoulder (OTS)', lens: '35mm', movement: 'Handheld', angle: 'Slight High Angle', description: 'Stalker Perspective' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up (ECU)', lens: 'Macro', movement: 'Static', angle: 'Ground Level', description: 'Trigger Event' },
+      ];
+    } else if (pendingPresetType === 'reveal') {
+      sequenceShots = [
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Establishing Shot (EST)', lens: '14mm', movement: 'Crane Down', angle: 'Top Down / Overhead', description: 'Overview Reveal' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Insert Shot (INS)', lens: 'Macro', movement: 'Tilt Up', angle: 'Ground Level', description: 'Walk-in Detail' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Cowboy Shot (CS)', lens: '35mm', movement: 'Steadicam', angle: 'Slight Low Angle', description: 'Subject Profile' },
+        { ...INITIAL_SHOT_STATE, scene_no: currentScene, shot_size: 'Extreme Close Up (ECU)', lens: '75mm', movement: 'Static', angle: 'Eye Level', description: 'Eyes Reveal (Italian Shot)' },
       ];
     }
 
@@ -850,9 +874,11 @@ export default function ShotlistEditor() {
                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold border-b border-white/5 pb-2">Quick Presets</p>
                 <div className="space-y-2">
                   {[
-                    { type: 'master_coverage', label: 'Establish', sub: '3 shots (Master, A, B)' },
-                    { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, OTS A, OTS B)' },
-                    { type: 'detail_coverage', label: 'Detail / Macro Pkg', sub: '3 shots (CU, 2x ECU)' }
+                    { type: 'master_coverage', label: 'Establish', sub: '3 shots (WS, 2x MS)' },
+                    { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, 2x OTS)' },
+                    { type: 'action_chase', label: 'Action', sub: '4 shots (WS, MS, ECU, POV)' },
+                    { type: 'suspense_tension', label: 'Suspense', sub: '4 shots (EWS, CU, OTS, ECU)' },
+                    { type: 'reveal', label: 'Reveal', sub: '4 shots (EST, INS, CS, ECU)' }
                   ].map(p => (
                     <button key={p.type} onClick={() => addSequence(p.type as any)} className="w-full bg-zinc-950 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-2.5 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group flex items-center gap-3 text-left">
                       <div className="w-7 h-7 rounded-lg bg-zinc-900 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors"> <Copy className="w-3.5 h-3.5 text-brand-cyan" /> </div>
@@ -894,7 +920,7 @@ export default function ShotlistEditor() {
               <div className="md:col-span-1"> <label className="label-micro">Lens</label> <select className="input-field h-[42px]" value={newShot.lens} onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}> {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-2"> <label className="label-micro">Movement</label> <select className="input-field h-[42px]" value={newShot.movement} onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}> {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-1"> <label className="label-micro">Angle</label> <select className="input-field h-[42px]" value={newShot.angle} onChange={e => setNewShot(prev => ({ ...prev, angle: e.target.value }))}> {OPTIONS.angle.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-1"> <label className="label-micro">Framing</label> <select className="input-field h-[42px]" value={newShot.framing || 'Standard'} onChange={e => setNewShot(prev => ({ ...prev, framing: e.target.value }))}> {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="md:col-span-1"> <label className="label-micro">Framing</label> <select className="input-field h-[42px]" value={newShot.framing || 'Rule of Thirds'} onChange={e => setNewShot(prev => ({ ...prev, framing: e.target.value }))}> {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
               <div className="md:col-span-2"> <label className="label-micro">Description</label> <input required className="input-field h-[42px]" value={newShot.description} onChange={e => setNewShot(prev => ({ ...prev, description: e.target.value }))} placeholder="Shot details..." /> </div>
               <div className="md:col-span-1"> <button type="submit" className="w-full bg-brand-yellow hover:bg-yellow-400 text-black font-semibold rounded-lg h-[42px] flex items-center justify-center transition-all shadow-lg shadow-brand-yellow/10"> <Plus className="w-5 h-5" /> </button> </div>
             </form>
@@ -974,7 +1000,7 @@ export default function ShotlistEditor() {
                                                       <div className="px-4 w-20 flex-shrink-0 text-sm font-medium text-zinc-400 mono">{shot.lens}</div>
                                                       <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.movement}</div>
                                                       <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.angle}</div>
-                                                      <div className="px-4 w-28 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.framing || 'Standard'}</div>
+                                                      <div className="px-4 w-28 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.framing || 'Rule of Thirds'}</div>
                                                       <div className="px-4 flex-1 text-sm text-zinc-300 font-medium leading-relaxed">{shot.description}</div>
                                                       <div className="px-4 w-24 flex-shrink-0 text-right pr-8 flex items-center justify-end">
                                                         <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100">
@@ -1015,7 +1041,7 @@ export default function ShotlistEditor() {
                                                     <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 hover:text-brand-cyan transition-colors cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"><DotsSixVertical size={18} /></div>
                                                   </div>
                                                   <div className="p-4 flex-1 flex flex-col justify-between gap-4">
-                                                    <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase min-h-[24px] line-clamp-2">{shot.lens} • {shot.movement} • {shot.angle} • {shot.framing || 'Standard'}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
+                                                    <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase min-h-[24px] line-clamp-2">{shot.lens} • {shot.movement} • {shot.angle} • {shot.framing || 'Rule of Thirds'}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
                                                     <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3 h-12">{shot.description}</p>
                                                   </div>
                                                 </div>
@@ -1170,7 +1196,7 @@ export default function ShotlistEditor() {
                     </div>
                     <div className="space-y-2">
                       <label className="label-micro block text-left font-medium">Framing</label>
-                      <select className="input-field bg-black/50" value={editingShot.framing || 'Standard'} onChange={e => setEditingShot({ ...editingShot, framing: e.target.value })}>
+                      <select className="input-field bg-black/50" value={editingShot.framing || 'Rule of Thirds'} onChange={e => setEditingShot({ ...editingShot, framing: e.target.value })}>
                         {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     </div>
