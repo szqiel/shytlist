@@ -103,5 +103,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <div align="center">
-  <p>Built for the next generation of filmmakers by <a href="https://github.com/SZQIEL">szqiel/p>
+  <p>Built for the next generation of filmmakers by <a href="https://github.com/SZQIEL">szqiel</p>
 </div>
