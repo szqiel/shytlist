@@ -6,6 +6,5 @@ coverage/
 *.log
 .env*
 client_secret_google.json
-*.md
 .impeccable
 !README.md

@@ -49,7 +49,7 @@ Drag, drop, and reorder shots with smooth spring-physics animations. Toggle seam
 - **⚡ Effortless Scene Management** – Automatic shot numbering and re-calculation as you move shots between scenes. No more manual spreadsheet math.
 - **⏱️ Production Intelligence** – Real-time estimated runtimes based on your shot setups and transition metrics. Know your schedule before you hit record.
 - **👁️ On-Set Accessibility** – True dark-mode (`#000000`) and high-contrast neon accents designed specifically to prevent eye strain during night shoots and maintain legibility under harsh sunlight.
-- **📄 Pro Exports** – Generate branded, landscape PDF shotlists ready to hand out to your crew.
+- **📄 Pro Exports** – Generate branded, landscape PDF shotlists (detailed Table List or visual 3x2 Storyboard Grid) and customizable CSV spreadsheets ready to hand out to your crew, with automatic aspect-ratio logo scaling.
 - **🔒 Secure Collaboration** – Private project protection backed by Supabase.
 
 ## 🛤️ Future Updates
@@ -67,7 +67,8 @@ While the UI is built for artists, the engine is built for scale.
 - **Frontend:** React 19 (TS), Vite 6, Tailwind CSS 4
 - **Animation:** Motion (Spring Physics) for a tactile, hardware-like feel.
 - **Database & Auth:** Supabase (Postgres, Storage)
-- **Deployment:** Vercel
+- **PDF Compilation:** jsPDF, jspdf-autotable
+- **Deployment:** Vercel (with Analytics)
 
 ## 🚀 Local Development
 
@@ -95,6 +96,8 @@ Follow these steps to get Shytlist running on your machine:
    ```bash
    npm run dev
    ```
+
+For a detailed developer reference manual including database schemas, custom RLS policies, visual tokens, and codebase architecture, refer to [Shytlist_Documentation.md](Shytlist_Documentation.md).
 
 ## 📜 License
 
