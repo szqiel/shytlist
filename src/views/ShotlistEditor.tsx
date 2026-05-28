@@ -181,6 +181,7 @@ export default function ShotlistEditor() {
   const ALL_COLUMNS = ['Storyboard', 'Shot Size', 'Lens', 'Movement', 'Angle', 'Framing', 'Description'];
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<string[]>(ALL_COLUMNS);
+  const [exportFormat, setExportFormat] = useState<'table' | 'storyboard'>('table');
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'action_chase' | 'suspense_tension' | 'reveal' | null>(null);
   const [presetSceneNo, setPresetSceneNo] = useState('1');
@@ -529,9 +530,27 @@ export default function ShotlistEditor() {
   const exportPDF = async () => {
     if (!project) return;
     
-    // 1. Asynchronously load and cache all storyboard images if Storyboard is included in exportColumns
+    // 1. Asynchronously load and cache company logo if exists
+    let logoImg: HTMLImageElement | null = null;
+    if (project.company_logo_url) {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = project.company_logo_url;
+        await new Promise((res) => {
+          img.onload = () => res(img);
+          img.onerror = () => res(null);
+        });
+        if (img.width > 0) {
+          logoImg = img;
+        }
+      } catch (e) {}
+    }
+
+    // 2. Asynchronously load and cache all storyboard images if Storyboard is included or format is storyboard
     const loadedImages: Record<string, HTMLImageElement | null> = {};
-    if (exportColumns.includes('Storyboard')) {
+    const needsStoryboards = exportFormat === 'storyboard' || exportColumns.includes('Storyboard');
+    if (needsStoryboards) {
       const imagePromises = shots.map(async (shot) => {
         if (shot.storyboard_url) {
           try {
@@ -562,7 +581,196 @@ export default function ShotlistEditor() {
       });
     }
 
-    // 2. Instantiate jsPDF in landscape format
+    // 3. Conditional flow for Storyboard Grid Export
+    if (exportFormat === 'storyboard') {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth(); // 297
+      const pageHeight = doc.internal.pageSize.getHeight(); // 210
+
+      // Calculate total pages
+      const shotsPerPage = 6;
+      const totalPages = Math.max(1, Math.ceil(shots.length / shotsPerPage));
+
+      // Helper function to draw the table-export style header and footer on a page
+      const drawHeaderAndFooter = (pageNum: number) => {
+        // 1. Draw premium charcoal banner spanning the entire width
+        doc.setFillColor(8, 8, 8); // #080808 (nav background)
+        doc.rect(0, 0, pageWidth, 42, 'F');
+
+        // 2. Draw the bottom brand-yellow accent line (1.5mm thickness)
+        doc.setFillColor(255, 232, 55); // brand-yellow (#FFE837)
+        doc.rect(0, 42, pageWidth, 1.5, 'F');
+
+        // 3. Title "SHYTLIST" in bold cyan
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(55, 202, 255); // brand-cyan (#37CAFF)
+        doc.setFontSize(24);
+        doc.text('SHYTLIST', 14, 18);
+
+        // Subtitle / Project Name in white
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(11);
+        doc.text(`PROJECT: ${project.title.toUpperCase()}`, 14, 27);
+
+        // Crew Info: Director and DP in brand-yellow
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 232, 55); // brand-yellow (#FFE837)
+        doc.setFontSize(9);
+        doc.text(`DIR: ${project.director.toUpperCase()}`, 14, 34);
+        doc.text(`DP: ${project.dp.toUpperCase()}`, 80, 34);
+
+        // 6. On-Set Production Metrics Grid in the header
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(150, 150, 150);
+        doc.setFontSize(8);
+        doc.text('SCENES', 140, 16);
+        doc.text('SHOTS', 160, 16);
+        doc.text('EST. DAY', 180, 16);
+        doc.text('FILM RUNTIME', 205, 16);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.text(`${productionMetrics.sceneCount}`, 140, 24);
+        doc.text(`${shots.length}`, 160, 24);
+        doc.text(`${productionMetrics.totalDuration}`, 180, 24);
+
+        // Highlight edited film runtime in brand-yellow
+        doc.setTextColor(255, 232, 55); // brand-yellow
+        doc.text(`${productionMetrics.filmDuration}`, 205, 24);
+
+        // 7. Corporate Logo Upload (Top-Right) - Aspect Ratio Preserved
+        if (logoImg) {
+          try {
+            let drawWidth = 30;
+            let drawHeight = 18;
+            const logoAspect = logoImg.width / logoImg.height;
+            const boxAspect = 30 / 18; // 1.666...
+
+            if (logoAspect > boxAspect) {
+              // Image is wider than the box, fit to width
+              drawWidth = 30;
+              drawHeight = 30 / logoAspect;
+            } else {
+              // Image is taller than the box, fit to height
+              drawHeight = 18;
+              drawWidth = 18 * logoAspect;
+            }
+
+            const drawX = pageWidth - 15 - drawWidth;
+            const drawY = 8 + (18 - drawHeight) / 2;
+            doc.addImage(logoImg, 'PNG', drawX, drawY, drawWidth, drawHeight);
+          } catch (e) {}
+        }
+
+        // 8. Footer (Page Numbering)
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(113, 113, 122); // zinc-500
+        doc.setFontSize(8);
+        doc.text(`PAGE ${pageNum} OF ${totalPages}`, pageWidth / 2, 203, { align: 'center' });
+      };
+
+      // Loop through shots in chunks of 6
+      for (let i = 0; i < shots.length; i += shotsPerPage) {
+        const pageNum = Math.floor(i / shotsPerPage) + 1;
+        if (pageNum > 1) {
+          doc.addPage();
+        }
+
+        drawHeaderAndFooter(pageNum);
+
+        const pageShots = shots.slice(i, i + shotsPerPage);
+        for (let j = 0; j < pageShots.length; j++) {
+          const shot = pageShots[j];
+          const colIndex = j % 3;
+          const rowIndex = Math.floor(j / 3);
+
+          // Calculate card coordinates
+          const xCard = 15 + colIndex * (84 + 7.5);
+          const yCard = 48 + rowIndex * (70 + 5);
+
+          // 1. Draw Storyboard Image Container (16:9 ratio, 84mm x 47.25mm)
+          const imgWidth = 84;
+          const imgHeight = 47.25;
+
+          let imgLoaded = false;
+          if (shot.storyboard_url) {
+            const img = loadedImages[shot.id];
+            if (img) {
+              try {
+                doc.addImage(img, 'WEBP', xCard, yCard, imgWidth, imgHeight);
+                imgLoaded = true;
+              } catch (err) {
+                try {
+                  doc.addImage(img, 'JPEG', xCard, yCard, imgWidth, imgHeight);
+                  imgLoaded = true;
+                } catch (e) {}
+              }
+            }
+          }
+
+          if (!imgLoaded) {
+            // Fallback gray box
+            doc.setFillColor(244, 244, 245); // zinc-100
+            doc.rect(xCard, yCard, imgWidth, imgHeight, 'F');
+            // Border
+            doc.setDrawColor(228, 228, 231); // zinc-200
+            doc.rect(xCard, yCard, imgWidth, imgHeight, 'S');
+            // Center text "NO VISUAL"
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(161, 161, 170); // zinc-400
+            doc.setFontSize(9);
+            doc.text('NO VISUAL', xCard + imgWidth / 2, yCard + imgHeight / 2 + 1.5, { align: 'center' });
+          } else {
+            // Draw thin border around loaded image for premium framing
+            doc.setDrawColor(228, 228, 231); // zinc-200
+            doc.rect(xCard, yCard, imgWidth, imgHeight, 'S');
+          }
+
+          // 2. Draw top-left badge (like the gallery #{shot.shot_no})
+          doc.setFillColor(8, 8, 8); // #080808
+          doc.rect(xCard + 2.5, yCard + 2.5, 12, 5.5, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(55, 202, 255); // brand-cyan
+          doc.setFontSize(8);
+          doc.text(`#${shot.shot_no}`, xCard + 2.5 + 6, yCard + 2.5 + 4, { align: 'center' });
+
+          // 3. Draw Shot Details
+          const yDetails = yCard + imgHeight + 3.5;
+
+          // Line 1: Shot Size (bold, uppercase)
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(24, 24, 27); // zinc-900
+          doc.setFontSize(9);
+          doc.text(shot.shot_size.toUpperCase(), xCard, yDetails);
+
+          // Line 2: Camera Specs
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(113, 113, 122); // zinc-500
+          doc.setFontSize(7);
+          const specsText = `${shot.lens} • ${shot.movement} • ${shot.angle} • ${shot.framing || 'Rule of Thirds'}`;
+          doc.text(specsText.toUpperCase(), xCard, yDetails + 4.5);
+
+          // Line 3: Description
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(63, 63, 70); // zinc-700
+          doc.setFontSize(8);
+          const descLines = doc.splitTextToSize(shot.description || '', imgWidth);
+          if (descLines.length > 2) {
+            descLines[1] = descLines[1].substring(0, Math.max(0, descLines[1].length - 3)) + '...';
+            descLines.splice(2);
+          }
+          doc.text(descLines, xCard, yDetails + 9);
+        }
+      }
+
+      doc.save(`${project.title}_storyboard.pdf`);
+      setIsExportModalOpen(false);
+      return;
+    }
+
+    // 4. Instantiate jsPDF in landscape format (Table List fallback)
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth(); // 297
     const pageHeight = doc.internal.pageSize.getHeight(); // 210
@@ -614,17 +822,27 @@ export default function ShotlistEditor() {
     doc.setTextColor(255, 232, 55); // brand-yellow
     doc.text(`${productionMetrics.filmDuration}`, 205, 24);
 
-    // 7. Corporate Logo Upload (Top-Right)
-    if (project.company_logo_url) {
+    // 7. Corporate Logo Upload (Top-Right) - Aspect Ratio Preserved
+    if (logoImg) {
       try {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.src = project.company_logo_url;
-        await new Promise((res) => { img.onload = res; img.onerror = res; });
-        if (img.width > 0) {
-          // Render logo nicely aligned on the far right
-          doc.addImage(img, 'PNG', pageWidth - 45, 8, 30, 18);
+        let drawWidth = 30;
+        let drawHeight = 18;
+        const logoAspect = logoImg.width / logoImg.height;
+        const boxAspect = 30 / 18; // 1.666...
+
+        if (logoAspect > boxAspect) {
+          // Image is wider than the box, fit to width
+          drawWidth = 30;
+          drawHeight = 30 / logoAspect;
+        } else {
+          // Image is taller than the box, fit to height
+          drawHeight = 18;
+          drawWidth = 18 * logoAspect;
         }
+
+        const drawX = pageWidth - 15 - drawWidth;
+        const drawY = 8 + (18 - drawHeight) / 2;
+        doc.addImage(logoImg, 'PNG', drawX, drawY, drawWidth, drawHeight);
       } catch (e) {}
     }
 
@@ -1116,25 +1334,51 @@ export default function ShotlistEditor() {
 
                 <div className="mb-8">
                   <h2 className="text-3xl font-semibold text-white tracking-tight mb-2">Export Selection</h2>
-                  <p className="text-zinc-500 text-sm">Select columns to include in your export.</p>
+                  <p className="text-zinc-500 text-sm">Select layout format and options to export.</p>
                 </div>
 
-                <div className="space-y-4 mb-8">
-                  {ALL_COLUMNS.map(col => (
-                    <label key={col} className="flex items-center gap-3 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={exportColumns.includes(col)}
-                        onChange={() => setExportColumns(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])}
-                      />
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${exportColumns.includes(col) ? 'bg-brand-cyan border-brand-cyan' : 'border-zinc-700'}`}>
-                        {exportColumns.includes(col) && <CheckCircle weight="fill" size={14} className="text-black" />}
-                      </div>
-                      <span className="text-sm font-medium text-zinc-300">{col}</span>
-                    </label>
-                  ))}
+                <div className="mb-6">
+                  <label className="label-micro block text-left mb-2">Export Format</label>
+                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => setExportFormat('table')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${exportFormat === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      Table List
+                    </button>
+                    <button
+                      onClick={() => setExportFormat('storyboard')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${exportFormat === 'storyboard' ? 'bg-brand-cyan text-black' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      Storyboard Grid
+                    </button>
+                  </div>
                 </div>
+
+                {exportFormat === 'storyboard' ? (
+                  <div className="p-4 bg-brand-cyan/5 border border-brand-cyan/10 rounded-2xl mb-8">
+                    <p className="text-xs text-brand-cyan font-medium leading-relaxed">
+                      Storyboard Grid will export all shots in a visual 3x2 landscape layout, including the storyboard image, size, lens/movement specs, and description.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 mb-8">
+                    {ALL_COLUMNS.map(col => (
+                      <label key={col} className="flex items-center gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={exportColumns.includes(col)}
+                          onChange={() => setExportColumns(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])}
+                        />
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${exportColumns.includes(col) ? 'bg-brand-cyan border-brand-cyan' : 'border-zinc-700'}`}>
+                          {exportColumns.includes(col) && <CheckCircle weight="fill" size={14} className="text-black" />}
+                        </div>
+                        <span className="text-sm font-medium text-zinc-300">{col}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex gap-4">
                   <button onClick={exportPDF} className="btn-primary flex-1 py-4 font-bold cursor-pointer">PDF</button>
