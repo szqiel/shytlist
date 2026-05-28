@@ -5,6 +5,10 @@ coverage/
 .DS_Store
 *.log
 .env*
+supabase/.temp/
+.codex-supabase-template/
+SECURITY_HARDENING_REPORT.md
+security-scans/
 client_secret_google.json
 .impeccable
 !README.md

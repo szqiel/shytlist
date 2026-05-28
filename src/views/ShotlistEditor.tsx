@@ -130,6 +130,23 @@ const OPTIONS = {
   ],
 };
 
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const IMAGE_EXTENSION_BY_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+const isAllowedImageFile = (file: File) => ALLOWED_IMAGE_MIME_TYPES.has(file.type);
+
+const getImageExtension = (file: File) => IMAGE_EXTENSION_BY_MIME[file.type] || 'webp';
+
+const escapeCsvCell = (value: unknown) => {
+  const raw = String(value ?? '');
+  const formulaSafe = /^[\s]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return `"${formulaSafe.replace(/"/g, '""')}"`;
+};
+
 const useDraggableInPortal = () => {
   const self = useRef<any>({}).current;
 
@@ -353,10 +370,15 @@ export default function ShotlistEditor() {
 
   const handleImageUpload = async (shotId: string, file: File) => {
     try {
+      if (!isAllowedImageFile(file)) {
+        toast.error('Upload a JPG, PNG, or WebP image');
+        return;
+      }
       setSaveStatus('saving');
       const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
-      const filePath = `storyboards/${shotId}_${Math.random()}.webp`;
+      if (!isAllowedImageFile(compressedFile)) throw new Error('Unsupported compressed image type');
+      const filePath = `storyboards/${shotId}_${crypto.randomUUID()}.${getImageExtension(compressedFile)}`;
 
       const currentShot = shots.find(s => s.id === shotId);
       if (currentShot?.storyboard_url) {
@@ -367,7 +389,9 @@ export default function ShotlistEditor() {
         } catch (e) { console.error('Failed to delete old storyboard', e); }
       }
 
-      const { error: uploadError } = await supabase.storage.from('storyboards').upload(filePath, compressedFile);
+      const { error: uploadError } = await supabase.storage
+        .from('storyboards')
+        .upload(filePath, compressedFile, { contentType: compressedFile.type });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('storyboards').getPublicUrl(filePath);
       await supabase.from('shots').update({ storyboard_url: publicUrl }).eq('id', shotId);
@@ -438,10 +462,15 @@ export default function ShotlistEditor() {
   const handleLogoUpload = async (file: File) => {
     if (!project) return;
     try {
+      if (!isAllowedImageFile(file)) {
+        toast.error('Upload a JPG, PNG, or WebP image');
+        return;
+      }
       setSaveStatus('saving');
       const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
-      const filePath = `logos/${project.id}_${Math.random()}.webp`;
+      if (!isAllowedImageFile(compressedFile)) throw new Error('Unsupported compressed image type');
+      const filePath = `logos/${project.id}_${crypto.randomUUID()}.${getImageExtension(compressedFile)}`;
 
       if (project.company_logo_url) {
         try {
@@ -451,7 +480,9 @@ export default function ShotlistEditor() {
         } catch (e) { console.error('Failed to delete old logo', e); }
       }
 
-      const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, compressedFile, { contentType: compressedFile.type });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath);
       await supabase.from('projects').update({ company_logo_url: publicUrl }).eq('id', project.id);
@@ -509,21 +540,26 @@ export default function ShotlistEditor() {
     const rows = shots.map(s => {
       const row = [s.shot_no, s.scene_no];
       exportColumns.forEach(col => {
-        if (col === 'Storyboard') row.push(s.storyboard_url ? `"${s.storyboard_url.replace(/"/g, '""')}"` : '');
+        if (col === 'Storyboard') row.push(s.storyboard_url || '');
         if (col === 'Shot Size') row.push(s.shot_size);
         if (col === 'Lens') row.push(s.lens);
         if (col === 'Movement') row.push(s.movement);
         if (col === 'Angle') row.push(s.angle);
         if (col === 'Framing') row.push(s.framing);
-        if (col === 'Description') row.push(`"${s.description.replace(/"/g, '""')}"`);
+        if (col === 'Description') row.push(s.description);
       });
       return row;
     });
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(escapeCsvCell).join(','))
+      .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
+    link.href = url;
     link.download = `${project.title}_shotlist.csv`;
     link.click();
+    URL.revokeObjectURL(url);
     setIsExportModalOpen(false);
   };
 
