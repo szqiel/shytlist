@@ -184,6 +184,8 @@ export default function ShotlistEditor() {
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [pendingPresetType, setPendingPresetType] = useState<'master_coverage' | 'overs_tows' | 'action_chase' | 'suspense_tension' | 'reveal' | null>(null);
   const [presetSceneNo, setPresetSceneNo] = useState('1');
+  const [isAddFormExpanded, setIsAddFormExpanded] = useState(false);
+  const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
   // Load project
   useEffect(() => {
@@ -897,32 +899,48 @@ export default function ShotlistEditor() {
           <div className="lg:hidden p-6 bg-black/20 backdrop-blur-md border-b border-white/5 flex justify-between items-center">
             <div className="flex items-center gap-4">
                <button onClick={() => navigate('/projects')} className="text-zinc-500 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
-               <h2 className="text-lg font-semibold text-white tracking-tight truncate max-w-[200px]">{project.title}</h2>
+               <h2 className="text-lg font-semibold text-white tracking-tight truncate max-w-[160px]">{project.title}</h2>
             </div>
             <div className="flex gap-2">
-               <button onClick={exportPDF} className="p-2 bg-zinc-900 rounded-lg border border-white/5 text-brand-yellow"><FileArrowDown className="w-4 h-4" /></button>
+               <button onClick={() => setIsMobileInfoOpen(true)} className="p-2 bg-zinc-900 rounded-lg border border-white/5 text-brand-cyan"><SquaresFour className="w-4 h-4" /></button>
+               <button onClick={() => setIsExportModalOpen(true)} className="p-2 bg-zinc-900 rounded-lg border border-white/5 text-brand-yellow"><FileArrowDown className="w-4 h-4" /></button>
             </div>
           </div>
 
           <div className="px-6 md:px-8 py-4 bg-black/15 backdrop-blur-md border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-xl border border-white/5 w-full sm:w-auto overflow-x-auto">
-              <button onClick={() => setViewMode('table')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <List className="w-4 h-4" /> Table View </button>
-              <button onClick={() => setViewMode('gallery')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <SquaresFour className="w-4 h-4" /> Gallery View </button>
+              <button onClick={() => setViewMode('table')} className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <List className="w-4 h-4" /> Table View </button>
+              <button onClick={() => setViewMode('gallery')} className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'gallery' ? 'bg-brand-cyan text-black' : 'text-zinc-500 hover:text-white'}`}> <SquaresFour className="w-4 h-4" /> Gallery View </button>
             </div>
             <div className="flex items-center gap-4"> <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Showing {shots.length} Shots</span> </div>
           </div>
 
-          <div className="px-8 py-6 bg-black/10 border-b border-white/5">
-            <form onSubmit={addShot} className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-3 items-end">
-              <div className="md:col-span-1"> <label className="label-micro">Scene</label> <select className="input-field h-[42px]" value={newShot.scene_no} onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}> {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field h-[42px]" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-2"> <label className="label-micro">Size</label> <select className="input-field h-[42px]" value={newShot.shot_size} onChange={e => setNewShot(prev => ({ ...prev, shot_size: e.target.value }))}> {OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-1"> <label className="label-micro">Lens</label> <select className="input-field h-[42px]" value={newShot.lens} onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}> {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-2"> <label className="label-micro">Movement</label> <select className="input-field h-[42px]" value={newShot.movement} onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}> {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-1"> <label className="label-micro">Angle</label> <select className="input-field h-[42px]" value={newShot.angle} onChange={e => setNewShot(prev => ({ ...prev, angle: e.target.value }))}> {OPTIONS.angle.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-1"> <label className="label-micro">Framing</label> <select className="input-field h-[42px]" value={newShot.framing || 'Rule of Thirds'} onChange={e => setNewShot(prev => ({ ...prev, framing: e.target.value }))}> {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
-              <div className="md:col-span-2"> <label className="label-micro">Description</label> <input required className="input-field h-[42px]" value={newShot.description} onChange={e => setNewShot(prev => ({ ...prev, description: e.target.value }))} placeholder="Shot details..." /> </div>
-              <div className="md:col-span-1"> <button type="submit" className="w-full bg-brand-yellow hover:bg-yellow-400 text-black font-semibold rounded-lg h-[42px] flex items-center justify-center transition-all shadow-lg shadow-brand-yellow/10"> <Plus className="w-5 h-5" /> </button> </div>
+          {/* Mobile Quick Add Form Toggle */}
+          <div className="lg:hidden px-8 py-4 bg-black/5 border-b border-white/5">
+            <button
+              type="button"
+              onClick={() => setIsAddFormExpanded(!isAddFormExpanded)}
+              className={`w-full py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                isAddFormExpanded 
+                  ? 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white' 
+                  : 'bg-brand-yellow border-brand-yellow/20 text-black hover:bg-yellow-400'
+              }`}
+            >
+              {isAddFormExpanded ? 'Close Add Form' : '+ Add New Shot'}
+            </button>
+          </div>
+
+          <div className={`px-8 py-6 bg-black/10 border-b border-white/5 max-h-[60vh] overflow-y-auto lg:max-h-none lg:overflow-visible ${isAddFormExpanded ? 'block' : 'hidden lg:block'}`}>
+            <form onSubmit={addShot} className="grid grid-cols-2 md:grid-cols-12 gap-4 md:gap-3 items-end">
+              <div className="col-span-1 md:col-span-1"> <label className="label-micro">Scene</label> <select className="input-field h-[42px]" value={newShot.scene_no} onChange={e => setNewShot(prev => ({ ...prev, scene_no: e.target.value }))}> {OPTIONS.scene.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-1"> <label className="label-micro">Shot #</label> <select className="input-field h-[42px]" value={newShot.shot_no} onChange={e => setNewShot(prev => ({ ...prev, shot_no: e.target.value }))}> {OPTIONS.no.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-2"> <label className="label-micro">Size</label> <select className="input-field h-[42px]" value={newShot.shot_size} onChange={e => setNewShot(prev => ({ ...prev, shot_size: e.target.value }))}> {OPTIONS.shot_size.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-1"> <label className="label-micro">Lens</label> <select className="input-field h-[42px]" value={newShot.lens} onChange={e => setNewShot(prev => ({ ...prev, lens: e.target.value }))}> {OPTIONS.lens.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-2"> <label className="label-micro">Movement</label> <select className="input-field h-[42px]" value={newShot.movement} onChange={e => setNewShot(prev => ({ ...prev, movement: e.target.value }))}> {OPTIONS.movement.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-1"> <label className="label-micro">Angle</label> <select className="input-field h-[42px]" value={newShot.angle} onChange={e => setNewShot(prev => ({ ...prev, angle: e.target.value }))}> {OPTIONS.angle.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-1 md:col-span-1"> <label className="label-micro">Framing</label> <select className="input-field h-[42px]" value={newShot.framing || 'Rule of Thirds'} onChange={e => setNewShot(prev => ({ ...prev, framing: e.target.value }))}> {OPTIONS.framing.map(o => <option key={o} value={o}>{o}</option>)} </select> </div>
+              <div className="col-span-2 md:col-span-2"> <label className="label-micro">Description</label> <input required className="input-field h-[42px]" value={newShot.description} onChange={e => setNewShot(prev => ({ ...prev, description: e.target.value }))} placeholder="Shot details..." /> </div>
+              <div className="col-span-2 md:col-span-1"> <button type="submit" className="w-full bg-brand-yellow hover:bg-yellow-400 text-black font-semibold rounded-lg h-[42px] flex items-center justify-center transition-all shadow-lg shadow-brand-yellow/10"> <Plus className="w-5 h-5" /> <span className="md:hidden ml-2">Add Shot</span> </button> </div>
             </form>
           </div>
 
@@ -957,6 +975,9 @@ export default function ShotlistEditor() {
                                   exit={{ opacity: 0 }}
                                   transition={{ duration: 0.2 }}
                                 >
+                                    <div className="lg:hidden text-right mb-3 px-1">
+                                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">* Swipe table horizontally to view all columns</span>
+                                    </div>
                                     <div className="w-full rounded-2xl border border-white/5 bg-zinc-900/10 backdrop-blur-sm overflow-x-auto shadow-xl">
                                       <div className="min-w-[1050px] flex flex-col">
                                         {/* Header */}
@@ -969,7 +990,7 @@ export default function ShotlistEditor() {
                                           <div className="px-4 w-32 flex-shrink-0">Movement</div>
                                           <div className="px-4 w-32 flex-shrink-0">Angle</div>
                                           <div className="px-4 w-28 flex-shrink-0">Framing</div>
-                                          <div className="px-4 flex-1">Description</div>
+                                          <div className="px-4 flex-1 min-w-0">Description</div>
                                           <div className="px-4 w-24 flex-shrink-0 text-right pr-8">Actions</div>
                                         </div>
 
@@ -1001,9 +1022,9 @@ export default function ShotlistEditor() {
                                                       <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.movement}</div>
                                                       <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.angle}</div>
                                                       <div className="px-4 w-28 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.framing || 'Rule of Thirds'}</div>
-                                                      <div className="px-4 flex-1 text-sm text-zinc-300 font-medium leading-relaxed">{shot.description}</div>
+                                                      <div className="px-4 flex-1 text-sm text-zinc-300 font-medium leading-relaxed min-w-0 break-words">{shot.description}</div>
                                                       <div className="px-4 w-24 flex-shrink-0 text-right pr-8 flex items-center justify-end">
-                                                        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100">
+                                                        <div className="flex gap-2 justify-end opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
                                                           <button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple/></button>
                                                           <button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash/></button>
                                                         </div>
@@ -1038,10 +1059,10 @@ export default function ShotlistEditor() {
                                                   <div className="aspect-video bg-zinc-900 relative cursor-pointer" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
                                                     {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="w-6 h-6 text-zinc-700" /><span className="text-[10px] text-zinc-600 font-bold uppercase">No Visual</span></div>}
                                                     <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-brand-cyan mono">#{shot.shot_no}</div>
-                                                    <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 hover:text-brand-cyan transition-colors cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"><DotsSixVertical size={18} /></div>
+                                                    <div {...provided.dragHandleProps} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-md rounded-md text-zinc-400 hover:text-brand-cyan transition-colors cursor-grab active:cursor-grabbing opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><DotsSixVertical size={18} /></div>
                                                   </div>
                                                   <div className="p-4 flex-1 flex flex-col justify-between gap-4">
-                                                    <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase min-h-[24px] line-clamp-2">{shot.lens} • {shot.movement} • {shot.angle} • {shot.framing || 'Rule of Thirds'}</p></div> <div className="flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
+                                                    <div className="flex justify-between items-start gap-2"> <div><p className="text-[10px] font-bold text-zinc-300 uppercase">{shot.shot_size}</p><p className="text-[10px] text-zinc-500 font-medium uppercase min-h-[24px] line-clamp-2">{shot.lens} • {shot.movement} • {shot.angle} • {shot.framing || 'Rule of Thirds'}</p></div> <div className="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple size={14}/></button><button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash size={14}/></button></div> </div>
                                                     <p className="text-xs text-zinc-400 font-medium leading-relaxed line-clamp-3 h-12">{shot.description}</p>
                                                   </div>
                                                 </div>
@@ -1084,7 +1105,7 @@ export default function ShotlistEditor() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+                className="relative w-full max-w-md glass border border-white/10 p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
               >
                 <button
                   onClick={() => setIsExportModalOpen(false)}
@@ -1142,7 +1163,7 @@ export default function ShotlistEditor() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="relative w-full max-w-2xl glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto text-left"
+                className="relative w-full max-w-2xl glass border border-white/10 p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto text-left"
               >
                 <button
                   onClick={() => setEditingShot(null)}
@@ -1233,7 +1254,7 @@ export default function ShotlistEditor() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+                className="relative w-full max-w-md glass border border-white/10 p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
               >
                 <button
                   onClick={() => setIsPresetModalOpen(false)}
@@ -1256,6 +1277,138 @@ export default function ShotlistEditor() {
                   </div>
                   <div className="flex gap-4 pt-4">
                     <button onClick={confirmAddSequence} className="btn-primary flex-1 py-4 font-bold cursor-pointer">Confirm</button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+      {createPortal(
+        <AnimatePresence>
+          {isMobileInfoOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 lg:hidden">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileInfoOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                className="relative w-full max-w-md glass border border-white/10 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh] text-left space-y-6"
+              >
+                <button
+                  onClick={() => setIsMobileInfoOpen(false)}
+                  className="absolute top-6 right-6 p-3 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div>
+                  <h2 className="text-2xl font-semibold text-white tracking-tight mb-1">Project Dashboard</h2>
+                  <p className="text-zinc-500 text-xs">View metrics, presets and edit details.</p>
+                </div>
+
+                {/* Project Details Form */}
+                <div className="space-y-4 border-t border-white/5 pt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Project Information</p>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="label-micro opacity-70">Project Name</label>
+                      <input 
+                        className="input-field py-2 bg-zinc-900 border-brand-cyan/20 focus:border-brand-cyan"
+                        value={tempName}
+                        onChange={e => setTempName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="label-micro opacity-70">Director</label>
+                      <input 
+                        className="input-field py-2 bg-zinc-900 border-brand-cyan/20 focus:border-brand-cyan"
+                        value={tempDirector}
+                        onChange={e => setTempDirector(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="label-micro opacity-70">Director of Photography</label>
+                      <input 
+                        className="input-field py-2 bg-zinc-900 border-brand-cyan/20 focus:border-brand-cyan"
+                        value={tempDp}
+                        onChange={e => setTempDp(e.target.value)}
+                      />
+                    </div>
+                    <button onClick={saveProjectInfo} className="btn-primary w-full py-2.5 text-xs font-semibold">Save Project Details</button>
+                  </div>
+                </div>
+
+                {/* Production Estimate Dashboard */}
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Production Estimate</p>
+                  <div className="p-4 bg-zinc-900/40 rounded-2xl border border-white/5 space-y-4">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Shooting</span>
+                        <p className="text-xs font-bold text-white">{productionMetrics.shootingDuration}</p>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Setups</span>
+                        <p className="text-xs font-bold text-zinc-400">{productionMetrics.setupDuration}</p>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Trans.</span>
+                        <p className="text-xs font-bold text-zinc-400">{productionMetrics.transitionDuration}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="bg-brand-cyan/5 rounded-xl p-2.5 border border-brand-cyan/10">
+                        <span className="text-[8px] text-brand-cyan font-bold uppercase tracking-wider block mb-0.5">Estimated Day</span>
+                        <p className="text-sm font-bold text-white tracking-tight">{productionMetrics.totalDuration}</p>
+                      </div>
+                      <div className="bg-brand-yellow/5 rounded-xl p-2.5 border border-brand-yellow/10">
+                        <span className="text-[8px] text-brand-yellow font-bold uppercase tracking-wider block mb-0.5">Film Duration</span>
+                        <p className="text-sm font-bold text-white tracking-tight">{productionMetrics.filmDuration}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] font-bold text-zinc-500 uppercase tracking-widest border-t border-white/5 pt-2">
+                      <span>{productionMetrics.sceneCount} Scenes</span>
+                      <span>{shots.length} Shots</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Logo */}
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Production Branding</p>
+                  <div 
+                    className="aspect-video bg-zinc-950 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-yellow/30 transition-all duration-500 group overflow-hidden relative"
+                    onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleLogoUpload(file); }; input.click(); }}
+                  >
+                    {project.company_logo_url ? <img src={project.company_logo_url} alt="Logo" className="w-full h-full object-contain p-4" /> : <> <Upload className="w-4 h-4 text-zinc-600 group-hover:text-brand-yellow transition-colors" /> <span className="text-[10px] text-zinc-600 font-bold uppercase">Upload Logo</span> </>}
+                  </div>
+                </div>
+
+                {/* Presets */}
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Presets</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { type: 'master_coverage', label: 'Establish', sub: '3 shots (WS, 2x MS)' },
+                      { type: 'overs_tows', label: 'Dialogue', sub: '3 shots (2S, 2x OTS)' },
+                      { type: 'action_chase', label: 'Action', sub: '4 shots (WS, MS, ECU, POV)' },
+                      { type: 'suspense_tension', label: 'Suspense', sub: '4 shots (EWS, CU, OTS, ECU)' },
+                      { type: 'reveal', label: 'Reveal', sub: '4 shots (EST, INS, CS, ECU)' }
+                    ].map(p => (
+                      <button key={p.type} onClick={() => { setIsMobileInfoOpen(false); addSequence(p.type as any); }} className="w-full bg-zinc-950 border border-white/5 hover:border-brand-cyan/30 text-white rounded-xl p-2.5 transition-all group flex items-center gap-3 text-left">
+                        <div className="w-7 h-7 rounded-lg bg-zinc-900 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-colors"> <Copy className="w-3.5 h-3.5 text-brand-cyan" /> </div>
+                        <div> <p className="text-[9px] font-bold text-white uppercase tracking-wider">{p.label}</p> <p className="text-[8px] text-zinc-500 font-semibold">{p.sub}</p> </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </motion.div>

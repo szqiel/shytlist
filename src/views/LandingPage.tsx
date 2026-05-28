@@ -132,7 +132,7 @@ export default function LandingPage() {
       </div>
 
       {/* Right Content - Abstract Hero Asset */}
-      <div className="flex-1 w-full hidden md:flex justify-end relative h-[500px]">
+      <div className="flex-1 w-full flex justify-center md:justify-end relative h-[360px] md:h-[500px] -mt-20 md:mt-0">
         <motion.div
           animate={{ 
             y: [-10, 10, -10],
@@ -146,7 +146,7 @@ export default function LandingPage() {
           className="relative w-full max-w-md h-full"
         >
           {/* Main Card - Outer Doppelrand Shell */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[410px] doppelrand-shell p-2 z-20">
+          <div className="absolute top-[35%] md:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] sm:w-[340px] max-w-[340px] h-[410px] doppelrand-shell p-2 z-20 opacity-40 md:opacity-100">
             {/* Inner Doppelrand Core */}
             <div className="w-full h-full doppelrand-core p-6 flex flex-col justify-between">
               <div className="space-y-6">
@@ -204,7 +204,7 @@ export default function LandingPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="relative w-full max-w-lg glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
+                className="relative w-full max-w-lg glass border border-white/10 p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden"
               >
                 <button
                   onClick={() => setIsModalOpen(false)}

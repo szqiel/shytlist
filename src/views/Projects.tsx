@@ -276,7 +276,7 @@ export default function Projects() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={springConfig}
-                className="relative w-full max-w-lg glass p-12 rounded-[2.5rem] shadow-2xl overflow-hidden"
+                className="relative w-full max-w-lg glass p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden"
               >
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -352,7 +352,7 @@ export default function Projects() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={springConfig}
-                className="relative w-full max-w-md glass border border-white/10 p-12 rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
+                className="relative w-full max-w-md glass border border-white/10 p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] shadow-2xl overflow-hidden text-left"
               >
                 <button
                   onClick={() => setProjectToDelete(null)}

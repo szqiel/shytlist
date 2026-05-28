@@ -58,12 +58,12 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Ambient Breathing Background Mesh Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-25%] left-[-15%] w-[60vw] h-[60vw] rounded-full bg-brand-cyan/8 blur-[140px] animate-float-cyan"></div>
-        <div className="absolute bottom-[-25%] right-[-15%] w-[60vw] h-[60vw] rounded-full bg-brand-yellow/4 blur-[140px] animate-float-yellow"></div>
+        <div className="absolute top-[-10%] left-[-20%] w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] md:top-[-25%] md:left-[-15%] md:w-[60vw] md:h-[60vw] rounded-full bg-brand-cyan/20 md:bg-brand-cyan/8 blur-[60px] sm:blur-[100px] md:blur-[140px] animate-float-cyan"></div>
+        <div className="absolute bottom-[-10%] right-[-20%] w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] md:bottom-[-25%] md:right-[-15%] md:w-[60vw] md:h-[60vw] rounded-full bg-brand-yellow/12 md:bg-brand-yellow/4 blur-[60px] sm:blur-[100px] md:blur-[140px] animate-float-yellow"></div>
       </div>
 
       {/* Navigation Floating Capsule */}
-      <div className="sticky top-4 z-50 w-full px-4 md:px-0">
+      <div className="sticky top-4 z-50 w-full px-4 md:px-0 mb-4 md:mb-6">
         <nav className="mx-auto w-full max-w-5xl bg-zinc-950/60 backdrop-blur-xl border border-white/10 px-6 py-2.5 rounded-full flex items-center justify-between shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]">
           <Link to="/" className="flex items-center gap-3 group">
             <Logo size="md" className="transition-all duration-300 group-hover:scale-105" />
@@ -139,7 +139,7 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Page Content */}
-      <main className={`flex-1 relative z-10 w-full min-h-0 ${location.pathname.match(/^\/projects\/.+/) ? 'p-2 md:p-4 flex flex-col overflow-hidden' : 'px-6 md:px-12 py-16 max-w-7xl mx-auto'}`}>
+      <main className={`flex-1 relative z-10 w-full min-h-0 ${location.pathname.match(/^\/projects\/.+/) ? 'pt-2 px-3 pb-3 md:pt-4 md:px-4 md:pb-4 flex flex-col overflow-hidden' : 'px-6 md:px-12 py-16 max-w-7xl mx-auto'}`}>
         {children}
       </main>
 
