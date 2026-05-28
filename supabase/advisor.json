@@ -1,64 +1,54 @@
 [
   {
-    "name": "anon_security_definer_function_executable",
-    "title": "Public Can Execute SECURITY DEFINER Function",
+    "name": "auth_leaked_password_protection",
+    "title": "Leaked Password Protection Disabled",
     "level": "WARN",
     "facing": "EXTERNAL",
     "categories": [
       "SECURITY"
     ],
-    "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
-    "detail": "Function `public.reorder_shots(p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[])` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/reorder_shots`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
-    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+    "description": "Leaked password protection is currently disabled.",
+    "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+    "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
     "metadata": {
-      "name": "reorder_shots",
-      "schema": "public",
-      "language": "plpgsql",
-      "arguments": "p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[]",
-      "security_definer": true
+      "entity": "Auth",
+      "type": "auth"
     },
-    "cache_key": "anon_security_definer_function_executable_public_reorder_shots_p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[]"
+    "cache_key": "auth_leaked_password_protection"
   },
   {
-    "name": "authenticated_security_definer_function_executable",
-    "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+    "name": "auth_insufficient_mfa_options",
+    "title": "Insufficient MFA Options",
     "level": "WARN",
     "facing": "EXTERNAL",
     "categories": [
       "SECURITY"
     ],
-    "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
-    "detail": "Function `public.reorder_shots(p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[])` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/reorder_shots`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
-    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+    "description": "This project has too few multi-factor authentication (MFA) options enabled.",
+    "detail": "Your project has too few MFA options enabled, which may weaken account security. Enable more MFA methods to enhance security.",
+    "remediation": "https://supabase.com/docs/guides/auth/auth-mfa",
     "metadata": {
-      "name": "reorder_shots",
-      "schema": "public",
-      "language": "plpgsql",
-      "arguments": "p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[]",
-      "security_definer": true
+      "entity": "Auth",
+      "type": "auth"
     },
-    "cache_key": "authenticated_security_definer_function_executable_public_reorder_shots_p_shot_ids uuid[], p_shot_numbers text[], p_scene_numbers text[]"
+    "cache_key": "auth_insufficient_mfa_options"
   },
   {
-    "name": "unindexed_foreign_keys",
-    "title": "Unindexed foreign keys",
+    "name": "unused_index",
+    "title": "Unused Index",
     "level": "INFO",
     "facing": "EXTERNAL",
     "categories": [
       "PERFORMANCE"
     ],
-    "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
-    "detail": "Table \\`public.projects\\` has a foreign key \\`projects_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
-    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+    "description": "Detects if an index has never been used and may be a candidate for removal.",
+    "detail": "Index `idx_projects_user_id` on table `public.projects` has not been used",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
     "metadata": {
       "name": "projects",
-      "type": "table",
       "schema": "public",
-      "fkey_name": "projects_user_id_fkey",
-      "fkey_columns": [
-        5
-      ]
+      "type": "table"
     },
-    "cache_key": "unindexed_foreign_keys_public_projects_projects_user_id_fkey"
+    "cache_key": "unused_index_public_projects_idx_projects_user_id"
   }
 ]

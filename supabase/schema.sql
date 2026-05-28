@@ -151,11 +151,14 @@ create policy "Users can delete shots of their own projects"
 -- -----------------------------------------------------
 
 -- Insert buckets if they don't exist
-insert into storage.buckets (id, name, public)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values 
-  ('logos', 'logos', true),
-  ('storyboards', 'storyboards', true)
-on conflict (id) do update set public = true;
+  ('logos', 'logos', true, 1048576, array['image/jpeg', 'image/png', 'image/webp']),
+  ('storyboards', 'storyboards', true, 1048576, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 -- Cleanup any overly permissive storage SELECT policies to fix "Public Bucket Allows Listing" warning
 drop policy if exists "Public Access Logos" on storage.objects;
@@ -167,46 +170,101 @@ drop policy if exists "Auth Insert Storyboards" on storage.objects;
 drop policy if exists "Auth Update Storyboards" on storage.objects;
 drop policy if exists "Auth Delete Storyboards" on storage.objects;
 
--- Storage RLS Policies for Logos (Authenticated users can upload/update/delete)
+-- Storage RLS Policies for Logos (Authenticated project owners can upload/update/delete)
 -- NOTE: We explicitly DO NOT create a broad SELECT policy here to prevent public listing.
 -- The bucket is set to `public = true`, which allows direct URL access to individual files without a SELECT policy.
-create policy "Auth Insert Logos" on storage.objects for insert with check ( bucket_id = 'logos' and auth.role() = 'authenticated' );
-create policy "Auth Update Logos" on storage.objects for update using ( bucket_id = 'logos' and auth.role() = 'authenticated' );
-create policy "Auth Delete Logos" on storage.objects for delete using ( bucket_id = 'logos' and auth.role() = 'authenticated' );
+create policy "Auth Insert Logos" on storage.objects for insert with check (
+  bucket_id = 'logos'
+  and auth.role() = 'authenticated'
+  and lower(name) ~ '^logos/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
+  and exists (
+    select 1 from public.projects p
+    where p.id = substring(name from '^logos/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
+  )
+);
+
+create policy "Auth Update Logos" on storage.objects for update using (
+  bucket_id = 'logos'
+  and auth.role() = 'authenticated'
+  and lower(name) ~ '^logos/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
+  and exists (
+    select 1 from public.projects p
+    where p.id = substring(name from '^logos/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
+  )
+) with check (
+  bucket_id = 'logos'
+  and auth.role() = 'authenticated'
+  and lower(name) ~ '^logos/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
+  and exists (
+    select 1 from public.projects p
+    where p.id = substring(name from '^logos/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
+  )
+);
+
+create policy "Auth Delete Logos" on storage.objects for delete using (
+  bucket_id = 'logos'
+  and auth.role() = 'authenticated'
+  and lower(name) ~ '^logos/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
+  and exists (
+    select 1 from public.projects p
+    where p.id = substring(name from '^logos/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
+  )
+);
 
 -- Storage RLS Policies for Storyboards
--- Limit file size to 1MB (1048576 bytes)
-update storage.buckets set file_size_limit = 1048576 where id = 'storyboards';
+-- Limit file size to 1MB (1048576 bytes) and allow only browser-safe raster image MIME types.
+update storage.buckets
+set
+  file_size_limit = 1048576,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']
+where id in ('logos', 'storyboards');
 
 create policy "Auth Insert Storyboards" on storage.objects for insert with check ( 
   bucket_id = 'storyboards' 
   and auth.role() = 'authenticated'
+  and lower(name) ~ '^storyboards/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
   and exists (
     select 1 from public.shots s
     join public.projects p on s.project_id = p.id
-    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
-    and p.user_id = auth.uid()
+    where s.id = substring(name from '^storyboards/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
   )
 );
 
 create policy "Auth Update Storyboards" on storage.objects for update using ( 
   bucket_id = 'storyboards' 
   and auth.role() = 'authenticated'
+  and lower(name) ~ '^storyboards/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
   and exists (
     select 1 from public.shots s
     join public.projects p on s.project_id = p.id
-    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
-    and p.user_id = auth.uid()
+    where s.id = substring(name from '^storyboards/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
+  )
+) with check (
+  bucket_id = 'storyboards'
+  and auth.role() = 'authenticated'
+  and lower(name) ~ '^storyboards/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
+  and exists (
+    select 1 from public.shots s
+    join public.projects p on s.project_id = p.id
+    where s.id = substring(name from '^storyboards/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
   )
 );
 
 create policy "Auth Delete Storyboards" on storage.objects for delete using ( 
   bucket_id = 'storyboards' 
   and auth.role() = 'authenticated'
+  and lower(name) ~ '^storyboards/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[^/]+\.(jpg|jpeg|png|webp)$'
   and exists (
     select 1 from public.shots s
     join public.projects p on s.project_id = p.id
-    where s.id = split_part(split_part(name, '/', 2), '_', 1)::uuid
-    and p.user_id = auth.uid()
+    where s.id = substring(name from '^storyboards/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_')::uuid
+    and p.user_id = (select auth.uid())
   )
 );
