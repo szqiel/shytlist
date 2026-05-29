@@ -329,6 +329,126 @@ export function useShotlist(projectId: string | undefined) {
     }
   };
 
+  const addShotsBulk = async (newShotsList: Omit<Shot, 'id' | 'project_id'>[]) => {
+    if (!projectId || newShotsList.length === 0) return;
+
+    const sceneNo = newShotsList[0].scene_no;
+    
+    // 1. Filter existing shots in the same scene and sort numerically
+    const sceneShots = shots
+      .filter(s => s.scene_no === sceneNo)
+      .sort((a, b) => parseInt(a.shot_no) - parseInt(b.shot_no));
+
+    // We will assign temp IDs and insert all new shots
+    const tempShots: Shot[] = newShotsList.map((ns, index) => ({
+      ...ns,
+      id: `temp-bulk-${index}-${Math.random()}`,
+      project_id: projectId,
+      created_at: new Date().toISOString()
+    }));
+
+    // Since they are added sequentially, let's insert them at their respective positions
+    const newSceneShots = [...sceneShots];
+    tempShots.forEach(ts => {
+      const requestedNum = parseInt(ts.shot_no);
+      const insertIndex = Math.min(newSceneShots.length, Math.max(0, requestedNum - 1));
+      newSceneShots.splice(insertIndex, 0, ts);
+    });
+
+    // 3. Assign sequential numbers
+    const updatedSceneShots = newSceneShots.map((shot, idx) => ({
+      ...shot,
+      shot_no: (idx + 1).toString()
+    }));
+
+    // 4. Update local state optimistically
+    const otherShots = shots.filter(s => s.scene_no !== sceneNo);
+    const optimisticAllShots = [...otherShots, ...updatedSceneShots].sort((a, b) => {
+      const sceneA = parseInt(a.scene_no) || 0;
+      const sceneB = parseInt(b.scene_no) || 0;
+      if (sceneA !== sceneB) return sceneA - sceneB;
+      const shotA = parseInt(a.shot_no) || 0;
+      const shotB = parseInt(b.shot_no) || 0;
+      return shotA - shotB;
+    });
+
+    setShots(optimisticAllShots);
+
+    try {
+      // 5. Insert new shots into the database in bulk
+      const dbInserts = tempShots.map(ts => {
+        const finalNum = updatedSceneShots.find(s => s.id === ts.id)?.shot_no || ts.shot_no;
+        return {
+          scene_no: ts.scene_no,
+          shot_no: finalNum,
+          shot_size: ts.shot_size,
+          lens: ts.lens,
+          movement: ts.movement,
+          angle: ts.angle,
+          framing: ts.framing,
+          description: ts.description,
+          storyboard_url: ts.storyboard_url,
+          project_id: projectId
+        };
+      });
+
+      const { data, error } = await supabase
+        .from('shots')
+        .insert(dbInserts)
+        .select();
+
+      if (error) throw error;
+
+      const insertedShots = data || [];
+      if (insertedShots.length === 0) throw new Error("No data returned");
+
+      // 6. Update shifted existing shots in database
+      const tempIds = tempShots.map(ts => ts.id);
+      const shiftsToUpdate = updatedSceneShots
+        .filter(s => !tempIds.includes(s.id))
+        .map(s => {
+          const original = sceneShots.find(orig => orig.id === s.id);
+          if (original && original.shot_no !== s.shot_no) {
+            return s;
+          }
+          return null;
+        })
+        .filter(Boolean) as Shot[];
+
+      if (shiftsToUpdate.length > 0) {
+        const ids = shiftsToUpdate.map(s => s.id);
+        const shotNos = shiftsToUpdate.map(s => s.shot_no);
+        const sceneNos = shiftsToUpdate.map(s => s.scene_no);
+
+        const { error: rpcError } = await supabase.rpc('reorder_shots', {
+          p_shot_ids: ids,
+          p_shot_numbers: shotNos,
+          p_scene_numbers: sceneNos
+        });
+        if (rpcError) throw rpcError;
+      }
+
+      // Map temp shots to their real inserted database rows
+      setShots(prev => {
+        let updated = [...prev];
+        tempShots.forEach((ts, index) => {
+          const matchingInserted = insertedShots[index];
+          if (matchingInserted) {
+            updated = updated.map(s => s.id === ts.id ? matchingInserted : s);
+          }
+        });
+        return updated;
+      });
+
+      toast.success('Sequence added');
+    } catch (err) {
+      console.error('Bulk add shot error:', err);
+      fetchShots();
+      toast.error('Failed to add sequence');
+      throw err;
+    }
+  };
+
   const reorderShots = async (reorderedShots: Shot[]) => {
     const previousShots = [...shots];
     setShots(reorderedShots);
@@ -356,6 +476,7 @@ export function useShotlist(projectId: string | undefined) {
     shots,
     loading,
     addShot,
+    addShotsBulk,
     updateShot,
     deleteShot,
     reorderShots,

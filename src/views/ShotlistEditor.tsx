@@ -180,7 +180,7 @@ const useDraggableInPortal = () => {
 export default function ShotlistEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { shots, addShot: addShotHook, updateShot: updateShotHook, deleteShot: deleteShotHook, reorderShots: reorderShotsHook } = useShotlist(id);
+  const { shots, addShot: addShotHook, addShotsBulk: addShotsBulkHook, updateShot: updateShotHook, deleteShot: deleteShotHook, reorderShots: reorderShotsHook } = useShotlist(id);
   const renderDraggable = useDraggableInPortal();
   
   const [project, setProject] = useState<Project | null>(null);
@@ -394,9 +394,10 @@ export default function ShotlistEditor() {
         .upload(filePath, compressedFile, { contentType: compressedFile.type });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('storyboards').getPublicUrl(filePath);
-      await supabase.from('shots').update({ storyboard_url: publicUrl }).eq('id', shotId);
+      if (currentShot) {
+        await updateShotHook({ ...currentShot, storyboard_url: publicUrl });
+      }
       setSaveStatus('saved');
-      toast.success('Storyboard updated');
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) { toast.error('Upload failed'); }
   };
@@ -449,11 +450,12 @@ export default function ShotlistEditor() {
     try {
       setSaveStatus('saving');
       const startNo = shots.filter(s => s.scene_no === currentScene).length + 1;
-      for (let i = 0; i < sequenceShots.length; i++) {
-        await addShotHook({ ...sequenceShots[i], shot_no: (startNo + i).toString() });
-      }
+      const shotsToInsert = sequenceShots.map((ss, idx) => ({
+        ...ss,
+        shot_no: (startNo + idx).toString()
+      }));
+      await addShotsBulkHook(shotsToInsert);
       setSaveStatus('saved');
-      toast.success('Sequence added');
       setTimeout(() => setSaveStatus('idle'), 2000);
       setIsPresetModalOpen(false);
     } catch (error) { toast.error('Failed to add sequence'); }
@@ -1277,19 +1279,19 @@ export default function ShotlistEditor() {
                                       <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">* Swipe table horizontally to view all columns</span>
                                     </div>
                                     <div className="w-full rounded-2xl border border-white/5 bg-zinc-900/10 backdrop-blur-sm overflow-x-auto shadow-xl">
-                                      <div className="min-w-[1050px] flex flex-col">
+                                      <div className="min-w-[1400px] flex flex-col">
                                         {/* Header */}
                                         <div className="bg-zinc-900/50 border-b border-white/5 flex items-center text-[10px] uppercase tracking-widest text-zinc-500 font-semibold py-4">
                                           <div className="px-2 w-10 flex-shrink-0"></div>
-                                          <div className="px-2 w-10 flex-shrink-0 text-brand-cyan">#</div>
-                                          <div className="px-4 w-36 flex-shrink-0">Storyboard</div>
-                                          <div className="px-4 w-32 flex-shrink-0">Size</div>
-                                          <div className="px-4 w-20 flex-shrink-0">Lens</div>
-                                          <div className="px-4 w-32 flex-shrink-0">Movement</div>
-                                          <div className="px-4 w-32 flex-shrink-0">Angle</div>
-                                          <div className="px-4 w-28 flex-shrink-0">Framing</div>
-                                          <div className="px-4 flex-1 min-w-0">Description</div>
-                                          <div className="px-4 w-24 flex-shrink-0 text-right pr-8">Actions</div>
+                                          <div className="px-2 w-12 flex-shrink-0 text-brand-cyan">#</div>
+                                          <div className="px-3 w-36 flex-shrink-0">Storyboard</div>
+                                          <div className="px-3 w-40 flex-shrink-0">Size</div>
+                                          <div className="px-3 w-44 flex-shrink-0">Lens</div>
+                                          <div className="px-3 w-40 flex-shrink-0">Movement</div>
+                                          <div className="px-3 w-44 flex-shrink-0">Angle</div>
+                                          <div className="px-3 w-40 flex-shrink-0">Framing</div>
+                                          <div className="px-3 flex-1 min-w-0">Description</div>
+                                          <div className="px-3 w-24 flex-shrink-0 text-right pr-8">Actions</div>
                                         </div>
 
                                         {/* Body */}
@@ -1308,20 +1310,20 @@ export default function ShotlistEditor() {
                                                       <div className="px-2 w-10 flex-shrink-0 flex items-center justify-center cursor-grab active:cursor-grabbing" {...provided.dragHandleProps}>
                                                         <DotsSixVertical size={20} className="text-zinc-400 group-hover:text-brand-cyan transition-colors duration-200 mx-auto" />
                                                       </div>
-                                                      <div className="px-2 w-10 flex-shrink-0 text-zinc-300 text-sm font-semibold mono">{shot.shot_no}</div>
-                                                      <div className="px-4 w-36 flex-shrink-0">
+                                                      <div className="px-2 w-12 flex-shrink-0 text-zinc-300 text-sm font-semibold mono">{shot.shot_no}</div>
+                                                      <div className="px-3 w-36 flex-shrink-0">
                                                         <div className="w-28 h-16 bg-zinc-800 rounded-lg border border-white/5 overflow-hidden flex items-center justify-center cursor-pointer hover:border-brand-cyan/50 transition-colors duration-200 active:scale-[0.97] group/sb relative" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleImageUpload(shot.id, file); }; input.click(); }}>
                                                           {shot.storyboard_url ? <img src={shot.storyboard_url} alt="Storyboard" className="w-full h-full object-cover" /> : <ImageIcon className="text-zinc-600 group-hover/sb:text-brand-cyan" />}
                                                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/sb:opacity-100 flex items-center justify-center transition-opacity"><Upload className="w-3 h-3 text-white" /></div>
                                                         </div>
                                                       </div>
-                                                      <div className="px-4 w-32 flex-shrink-0 text-[10px] font-semibold text-zinc-300 uppercase">{shot.shot_size}</div>
-                                                      <div className="px-4 w-20 flex-shrink-0 text-sm font-medium text-zinc-400 mono">{shot.lens}</div>
-                                                      <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.movement}</div>
-                                                      <div className="px-4 w-32 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.angle}</div>
-                                                      <div className="px-4 w-28 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.framing || 'Rule of Thirds'}</div>
-                                                      <div className="px-4 flex-1 text-sm text-zinc-300 font-medium leading-relaxed min-w-0 break-words">{shot.description}</div>
-                                                      <div className="px-4 w-24 flex-shrink-0 text-right pr-8 flex items-center justify-end">
+                                                      <div className="px-3 w-40 flex-shrink-0 text-[10px] font-semibold text-zinc-300 uppercase">{shot.shot_size}</div>
+                                                      <div className="px-3 w-44 flex-shrink-0 text-sm font-medium text-zinc-400 mono">{shot.lens}</div>
+                                                      <div className="px-3 w-40 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.movement}</div>
+                                                      <div className="px-3 w-44 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.angle}</div>
+                                                      <div className="px-3 w-40 flex-shrink-0 text-sm font-medium text-zinc-500">{shot.framing || 'Rule of Thirds'}</div>
+                                                      <div className="px-3 flex-1 text-sm text-zinc-300 font-medium leading-relaxed min-w-0 break-words">{shot.description}</div>
+                                                      <div className="px-3 w-24 flex-shrink-0 text-right pr-8 flex items-center justify-end">
                                                         <div className="flex gap-2 justify-end opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
                                                           <button onClick={()=>setEditingShot(shot)} className="hover:text-brand-cyan"><PencilSimple/></button>
                                                           <button onClick={()=>deleteShot(shot.id)} className="hover:text-red-400"><Trash/></button>
