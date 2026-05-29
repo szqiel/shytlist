@@ -21,65 +21,216 @@ import { useShotlist } from '../lib/useShotlist';
 
 const calculateShotDuration = (shot: Shot): number => {
   let minutes = 5;
+  
+  // 1. Size Modifier
   const size = shot.shot_size;
-  if (["Extreme Wide Shot", "Wide Shot", "Group Shot"].includes(size)) minutes += 3;
-  else if (["Full Shot", "Cowboy Shot", "Medium Full Shot"].includes(size)) minutes += 2;
-  else if (["Over the Shoulder", "Two Shot"].includes(size)) minutes += 3;
-  else if (["Medium Shot", "Medium Close Up", "Point of View"].includes(size)) minutes += 1;
-  else if (["Close Up"].includes(size)) minutes += 0;
-  else if (["Extreme Close Up", "Insert"].includes(size)) minutes -= 1;
+  if ([
+    "Extreme Wide Shot (EWS)", "Wide Shot (WS)", "Group Shot (GS)", "Establishing Shot (EST)"
+  ].includes(size)) {
+    minutes += 3;
+  } else if ([
+    "Full Shot (FS)", "Cowboy Shot (CS)", "Medium Wide Shot (MWS)"
+  ].includes(size)) {
+    minutes += 2;
+  } else if ([
+    "Over the Shoulder (OTS)", "Two Shot (2S)"
+  ].includes(size)) {
+    minutes += 3;
+  } else if ([
+    "Medium Shot (MS)", "Medium Close Up (MCU)", "Point of View (POV)", "Choker Shot (CH)", "Reaction Shot (REA)"
+  ].includes(size)) {
+    minutes += 1;
+  } else if ([
+    "Close Up (CU)"
+  ].includes(size)) {
+    minutes += 0;
+  } else if ([
+    "Extreme Close Up (ECU)", "Insert Shot (INS)"
+  ].includes(size)) {
+    minutes -= 1;
+  }
 
+  // 2. Movement Modifier
   const movement = shot.movement;
-  if (movement === "Static" || !movement) { /* no extra */ }
-  else if (["Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Zoom In", "Zoom Out"].includes(movement)) minutes += 2;
-  else if (["Dolly In", "Dolly Out", "Crab Left", "Crab Right", "Pedestal Up", "Pedestal Down"].includes(movement)) minutes += 4;
-  else if (["Crane Up", "Crane Down"].includes(movement)) minutes += 5;
-  else if (["Steadicam", "Handheld", "Gimbal", "Tracking Left", "Tracking Right"].includes(movement)) minutes += 3;
-  else if (movement === "Drone / Aerial") minutes += 6;
+  let movementExtra = 0;
+  if (movement === "Static" || !movement) {
+    movementExtra = 0;
+  } else if ([
+    "Pan Left", "Pan Right", "Tilt Up", "Tilt Down", "Whip Pan", "Whip Tilt"
+  ].includes(movement)) {
+    movementExtra = 2;
+  } else if ([
+    "Dolly In", "Dolly Out", "Push In", "Pull Out", "Crab Left", "Crab Right",
+    "Pedestal Up", "Pedestal Down", "Jib Up", "Jib Down", "Dolly Zoom"
+  ].includes(movement)) {
+    movementExtra = 4;
+  } else if ([
+    "Crane Up", "Crane Down", "Technocrane"
+  ].includes(movement)) {
+    movementExtra = 5;
+  } else if ([
+    "Steadicam", "Handheld", "Gimbal", "Shoulder Rig", "Tracking Left", "Tracking Right"
+  ].includes(movement)) {
+    movementExtra = 3;
+  } else if (movement === "Drone / Aerial") {
+    movementExtra = 6;
+  } else if (movement === "Motion Control" || movement === "360-Degree Spin") {
+    movementExtra = 5;
+  }
+  minutes += movementExtra;
+
+  // 3. Lens Modifier
+  const lens = shot.lens || '';
+  let lensExtra = 0;
+  if ([
+    "Anamorphic 35mm", "Anamorphic 50mm", "Anamorphic 75mm", "Anamorphic 100mm"
+  ].includes(lens)) {
+    lensExtra = 2;
+  } else if ([
+    "Probe Lens", "Tilt-Shift", "Macro"
+  ].includes(lens)) {
+    lensExtra = 5;
+  } else if (lens === "Zoom Lens (Variable)") {
+    lensExtra = 2;
+  }
+  minutes += lensExtra;
+
+  // 4. Framing Modifier
+  const framing = shot.framing || 'Rule of Thirds';
+  let framingExtra = 0;
+  if ([
+    "Golden Spiral", "Frame-Within-a-Frame", "Deep Focus Framing", "High Key Framing"
+  ].includes(framing)) {
+    framingExtra = 2;
+  } else if ([
+    "Shallow Depth of Field (Bokeh)", "Rack Focus Framing", "Low Key / Chiaroscuro"
+  ].includes(framing)) {
+    framingExtra = 4;
+  }
+  minutes += framingExtra;
 
   return Math.max(3, minutes);
 };
 
 const SIZE_TAKE_DURATION: Record<string, number> = {
-  "Extreme Wide Shot": 45, "Wide Shot": 45, "Group Shot": 45,
-  "Full Shot": 30, "Cowboy Shot": 30, "Medium Full Shot": 30,
-  "Medium Shot": 20, "Medium Close Up": 20,
-  "Over the Shoulder": 25, "Two Shot": 25,
-  "Close Up": 15, "Point of View": 15,
-  "Extreme Close Up": 8, "Insert": 8,
+  "Extreme Wide Shot (EWS)": 45,
+  "Wide Shot (WS)": 45,
+  "Group Shot (GS)": 45,
+  "Establishing Shot (EST)": 45,
+  "Full Shot (FS)": 30,
+  "Cowboy Shot (CS)": 30,
+  "Medium Wide Shot (MWS)": 30,
+  "Medium Shot (MS)": 20,
+  "Medium Close Up (MCU)": 20,
+  "Choker Shot (CH)": 18,
+  "Reaction Shot (REA)": 15,
+  "Over the Shoulder (OTS)": 25,
+  "Two Shot (2S)": 25,
+  "Close Up (CU)": 15,
+  "Point of View (POV)": 15,
+  "Extreme Close Up (ECU)": 8,
+  "Insert Shot (INS)": 8,
 };
 
 const calculateShootingDuration = (shot: Shot): number => {
   const MOVEMENT_TAKES: Record<string, number> = {
     "Static": 3,
-    "Pan Left": 3, "Pan Right": 3, "Tilt Up": 3, "Tilt Down": 3,
-    "Zoom In": 3, "Zoom Out": 3,
-    "Dolly In": 4, "Dolly Out": 4, "Crab Left": 4, "Crab Right": 4,
+    "Pan Left": 3, "Pan Right": 3, "Tilt Up": 3, "Tilt Down": 3, "Whip Pan": 4, "Whip Tilt": 4,
+    "Dolly In": 4, "Dolly Out": 4, "Push In": 4, "Pull Out": 4,
+    "Tracking Left": 5, "Tracking Right": 5,
+    "Crab Left": 4, "Crab Right": 4, "Dolly Zoom": 5,
     "Pedestal Up": 4, "Pedestal Down": 4,
-    "Handheld": 4,
-    "Crane Up": 5, "Crane Down": 5,
-    "Steadicam": 5, "Gimbal": 5, "Tracking Left": 5, "Tracking Right": 5,
+    "Jib Up": 4, "Jib Down": 4,
+    "Handheld": 4, "Shoulder Rig": 4,
+    "Crane Up": 5, "Crane Down": 5, "Technocrane": 6,
+    "Steadicam": 5, "Gimbal": 5,
     "Drone / Aerial": 5,
+    "Motion Control": 6, "360-Degree Spin": 5
   };
 
   const ANGLE_EXTRA: Record<string, number> = {
     "Eye Level": 0, "Shoulder Level": 0,
-    "High Angle": 1, "Low Angle": 1, "Hip Level": 1,
-    "Dutch Angle": 1, "Knee Level": 1, "Ground Level": 1,
+    "High Angle": 1, "Slight High Angle": 1,
+    "Low Angle": 1, "Slight Low Angle": 1,
+    "Hip Level": 1, "Knee Level": 1, "Ground Level": 1,
+    "Dutch Angle (Dutch Tilt)": 1, "Canted Angle": 1,
     "Top Down / Overhead": 2, "Bird's Eye View": 2, "Worm's Eye View": 2,
+    "Over-the-Shoulder Angle": 1, "Subjective POV Angle": 1
   };
 
   const takeDuration = SIZE_TAKE_DURATION[shot.shot_size] || 20;
   const baseTakes = MOVEMENT_TAKES[shot.movement] || 3;
   const angleExtra = ANGLE_EXTRA[shot.angle] || 0;
-  const numTakes = baseTakes + angleExtra;
+  
+  // Lens Extra Takes
+  let lensExtraTakes = 0;
+  const lens = shot.lens || '';
+  if ([
+    "Anamorphic 35mm", "Anamorphic 50mm", "Anamorphic 75mm", "Anamorphic 100mm"
+  ].includes(lens)) {
+    lensExtraTakes = 1;
+  } else if ([
+    "Probe Lens", "Tilt-Shift", "Macro"
+  ].includes(lens)) {
+    lensExtraTakes = 2;
+  }
+
+  // Framing Extra Takes
+  let framingExtraTakes = 0;
+  const framing = shot.framing || '';
+  if ([
+    "Shallow Depth of Field (Bokeh)", "Rack Focus Framing", "Low Key / Chiaroscuro"
+  ].includes(framing)) {
+    framingExtraTakes = 1;
+  }
+
+  const numTakes = baseTakes + angleExtra + lensExtraTakes + framingExtraTakes;
 
   return Math.ceil((takeDuration * numTakes) / 60) + 1;
 };
 
+const EDITED_SHOT_DURATION: Record<string, number> = {
+  "Extreme Wide Shot (EWS)": 22,
+  "Wide Shot (WS)": 18,
+  "Group Shot (GS)": 18,
+  "Establishing Shot (EST)": 24,
+  "Full Shot (FS)": 16,
+  "Cowboy Shot (CS)": 16,
+  "Medium Wide Shot (MWS)": 16,
+  "Medium Shot (MS)": 14,
+  "Medium Close Up (MCU)": 14,
+  "Choker Shot (CH)": 10,
+  "Reaction Shot (REA)": 10,
+  "Over the Shoulder (OTS)": 14,
+  "Two Shot (2S)": 14,
+  "Close Up (CU)": 10,
+  "Point of View (POV)": 10,
+  "Extreme Close Up (ECU)": 6,
+  "Insert Shot (INS)": 6,
+};
+
 const estimateFilmDuration = (shot: Shot): number => {
-  const takeDuration = SIZE_TAKE_DURATION[shot.shot_size] || 20;
-  return Math.round(takeDuration * 0.7);
+  const baseFilmSec = EDITED_SHOT_DURATION[shot.shot_size] || 4;
+
+  // Movement Multiplier
+  const movement = shot.movement || 'Static';
+  let movementMultiplier = 1.0;
+  if ([
+    "Dolly In", "Dolly Out", "Push In", "Pull Out", "Crab Left", "Crab Right",
+    "Pedestal Up", "Pedestal Down", "Jib Up", "Jib Down", "Dolly Zoom"
+  ].includes(movement)) {
+    movementMultiplier = 1.2;
+  } else if ([
+    "Handheld", "Shoulder Rig", "Gimbal", "Steadicam", "Tracking Left", "Tracking Right"
+  ].includes(movement)) {
+    movementMultiplier = 1.4;
+  } else if ([
+    "Crane Up", "Crane Down", "Technocrane", "Drone / Aerial", "Motion Control", "360-Degree Spin"
+  ].includes(movement)) {
+    movementMultiplier = 1.8;
+  }
+
+  return Math.round(baseFilmSec * movementMultiplier);
 };
 
 const INITIAL_SHOT_STATE: Omit<Shot, 'id' | 'project_id'> = {
