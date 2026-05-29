@@ -811,80 +811,9 @@ export default function ShotlistEditor() {
     const pageWidth = doc.internal.pageSize.getWidth(); // 297
     const pageHeight = doc.internal.pageSize.getHeight(); // 210
 
-    // 3. Draw a premium charcoal banner spanning the entire width
-    doc.setFillColor(8, 8, 8); // #080808 (nav background)
-    doc.rect(0, 0, pageWidth, 42, 'F');
-
-    // 4. Draw the bottom brand-yellow accent line (1.5mm thickness)
-    doc.setFillColor(255, 232, 55); // brand-yellow (#FFE837)
-    doc.rect(0, 42, pageWidth, 1.5, 'F');
-
-    // 5. Title "SHYTLIST" in bold cyan
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(55, 202, 255); // brand-cyan (#37CAFF)
-    doc.setFontSize(24);
-    doc.text('SHYTLIST', 14, 18);
-
-    // Subtitle / Project Name in white
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.text(`PROJECT: ${project.title.toUpperCase()}`, 14, 27);
-
-    // Crew Info: Director and DP in brand-yellow (as requested)
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 232, 55); // brand-yellow (#FFE837)
-    doc.setFontSize(9);
-    doc.text(`DIR: ${project.director.toUpperCase()}`, 14, 34);
-    doc.text(`DP: ${project.dp.toUpperCase()}`, 80, 34);
-
-    // 6. On-Set Production Metrics Grid in the header
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(8);
-    doc.text('SCENES', 140, 16);
-    doc.text('SHOTS', 160, 16);
-    doc.text('EST. DAY', 180, 16);
-    doc.text('FILM RUNTIME', 205, 16);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.text(`${productionMetrics.sceneCount}`, 140, 24);
-    doc.text(`${shots.length}`, 160, 24);
-    doc.text(`${productionMetrics.totalDuration}`, 180, 24);
-    
-    // Highlight edited film runtime in brand-yellow
-    doc.setTextColor(255, 232, 55); // brand-yellow
-    doc.text(`${productionMetrics.filmDuration}`, 205, 24);
-
-    // 7. Corporate Logo Upload (Top-Right) - Aspect Ratio Preserved
-    if (logoImg) {
-      try {
-        let drawWidth = 30;
-        let drawHeight = 18;
-        const logoAspect = logoImg.width / logoImg.height;
-        const boxAspect = 30 / 18; // 1.666...
-
-        if (logoAspect > boxAspect) {
-          // Image is wider than the box, fit to width
-          drawWidth = 30;
-          drawHeight = 30 / logoAspect;
-        } else {
-          // Image is taller than the box, fit to height
-          drawHeight = 18;
-          drawWidth = 18 * logoAspect;
-        }
-
-        const drawX = pageWidth - 15 - drawWidth;
-        const drawY = 8 + (18 - drawHeight) / 2;
-        doc.addImage(logoImg, 'PNG', drawX, drawY, drawWidth, drawHeight);
-      } catch (e) {}
-    }
-
     // 8. Construct Headers & Body for the Table
     // Map headers to uppercase display titles
-    const headHeaders = ['#', 'SCENE'];
+    const headHeaders = ['SCENE', '#'];
     exportColumns.forEach(col => {
       if (col === 'Storyboard') headHeaders.push('STORYBOARD');
       else if (col === 'Shot Size') headHeaders.push('SIZE');
@@ -893,7 +822,7 @@ export default function ShotlistEditor() {
     const head = [headHeaders];
 
     const body = shots.map(s => {
-      const row = [s.shot_no, s.scene_no];
+      const row = [s.scene_no, s.shot_no];
       exportColumns.forEach(col => {
         if (col === 'Storyboard') row.push(''); // placeholder, drawn via didDrawCell
         else if (col === 'Shot Size') row.push(s.shot_size);
@@ -908,8 +837,8 @@ export default function ShotlistEditor() {
 
     // 9. Column width mapping
     const colStyles: Record<number, any> = {
-      0: { cellWidth: 10, halign: 'center' }, // #
-      1: { cellWidth: 14, halign: 'center' }, // SCENE
+      0: { cellWidth: 16, halign: 'center' }, // SCENE
+      1: { cellWidth: 12, halign: 'center' }, // #
     };
     headHeaders.forEach((header, index) => {
       if (index < 2) return;
@@ -933,8 +862,10 @@ export default function ShotlistEditor() {
     // 10. Render AutoTable
     autoTable(doc, {
       startY: 48,
+      margin: { top: 15, bottom: 15, left: 14, right: 14 },
       head,
       body,
+      rowPageBreak: 'avoid',
       theme: 'grid',
       headStyles: {
         fillColor: [18, 18, 18], // #121212 surface
@@ -946,58 +877,171 @@ export default function ShotlistEditor() {
       },
       bodyStyles: {
         fontSize: 8,
-        textColor: [30, 30, 30],
+        textColor: [63, 63, 70], // zinc-700
         font: 'helvetica',
         valign: 'middle',
         // Row height matches storyboards size if included
         minCellHeight: exportColumns.includes('Storyboard') ? 22 : 10
       },
+      styles: {
+        lineColor: [228, 228, 231], // zinc-200 (#e4e4e7)
+        lineWidth: 0.15,
+        cellPadding: 2.5,
+      },
       alternateRowStyles: {
         fillColor: [248, 249, 250] // alternating rows for legibility
       },
       columnStyles: colStyles,
+      didDrawPage: (data) => {
+        if (data.pageNumber === 1) {
+          // Draw premium charcoal banner spanning the entire width
+          doc.setFillColor(8, 8, 8); // #080808 (nav background)
+          doc.rect(0, 0, pageWidth, 42, 'F');
+
+          // Draw the bottom brand-yellow accent line (1.5mm thickness)
+          doc.setFillColor(255, 232, 55); // brand-yellow (#FFE837)
+          doc.rect(0, 42, pageWidth, 1.5, 'F');
+
+          // Title "SHYTLIST" in bold cyan
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(55, 202, 255); // brand-cyan (#37CAFF)
+          doc.setFontSize(24);
+          doc.text('SHYTLIST', 14, 18);
+
+          // Subtitle / Project Name in white
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(11);
+          doc.text(`PROJECT: ${project.title.toUpperCase()}`, 14, 27);
+
+          // Crew Info: Director and DP in brand-yellow
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 232, 55); // brand-yellow (#FFE837)
+          doc.setFontSize(9);
+          doc.text(`DIR: ${project.director.toUpperCase()}`, 14, 34);
+          doc.text(`DP: ${project.dp.toUpperCase()}`, 80, 34);
+
+          // On-Set Production Metrics Grid in the header
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(150, 150, 150);
+          doc.setFontSize(8);
+          doc.text('SCENES', 140, 16);
+          doc.text('SHOTS', 160, 16);
+          doc.text('EST. DAY', 180, 16);
+          doc.text('FILM RUNTIME', 205, 16);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(12);
+          doc.text(`${productionMetrics.sceneCount}`, 140, 24);
+          doc.text(`${shots.length}`, 160, 24);
+          doc.text(`${productionMetrics.totalDuration}`, 180, 24);
+          
+          // Highlight edited film runtime in brand-yellow
+          doc.setTextColor(255, 232, 55); // brand-yellow
+          doc.text(`${productionMetrics.filmDuration}`, 205, 24);
+
+          // Corporate Logo Upload (Top-Right) - Aspect Ratio Preserved
+          if (logoImg) {
+            try {
+              let drawWidth = 30;
+              let drawHeight = 18;
+              const logoAspect = logoImg.width / logoImg.height;
+              const boxAspect = 30 / 18; // 1.666...
+
+              if (logoAspect > boxAspect) {
+                // Image is wider than the box, fit to width
+                drawWidth = 30;
+                drawHeight = 30 / logoAspect;
+              } else {
+                // Image is taller than the box, fit to height
+                drawHeight = 18;
+                drawWidth = 18 * logoAspect;
+              }
+
+              const drawX = pageWidth - 15 - drawWidth;
+              const drawY = 8 + (18 - drawHeight) / 2;
+              doc.addImage(logoImg, 'PNG', drawX, drawY, drawWidth, drawHeight);
+            } catch (e) {}
+          }
+        }
+      },
       didDrawCell: (data) => {
         if (data.section === 'body') {
           const colHeader = headHeaders[data.column.index]?.toUpperCase() || '';
           if (colHeader === 'STORYBOARD') {
             const shot = shots[data.row.index];
+            const paddingX = 2;
+            const paddingY = 2;
+            const cellX = data.cell.x + paddingX;
+            const cellY = data.cell.y + paddingY;
+            const cellWidth = data.cell.width - (paddingX * 2);
+            const cellHeight = data.cell.height - (paddingY * 2);
+
+            // Preserve 16:9 aspect ratio inside cell
+            const targetAspect = 16 / 9;
+            const cellAspect = cellWidth / cellHeight;
+            let drawWidth = cellWidth;
+            let drawHeight = cellHeight;
+
+            if (cellAspect > targetAspect) {
+              drawHeight = cellHeight;
+              drawWidth = cellHeight * targetAspect;
+            } else {
+              drawWidth = cellWidth;
+              drawHeight = cellWidth / targetAspect;
+            }
+
+            const drawX = cellX + (cellWidth - drawWidth) / 2;
+            const drawY = cellY + (cellHeight - drawHeight) / 2;
+
+            let imgLoaded = false;
             if (shot && shot.storyboard_url) {
               const img = loadedImages[shot.id];
               if (img) {
-                // Calculate dimensions to preserve 16:9 ratio in the cell
-                const paddingX = 2;
-                const paddingY = 2;
-                const cellX = data.cell.x + paddingX;
-                const cellY = data.cell.y + paddingY;
-                const cellWidth = data.cell.width - (paddingX * 2);
-                const cellHeight = data.cell.height - (paddingY * 2);
-
                 try {
-                  doc.addImage(img, 'WEBP', cellX, cellY, cellWidth, cellHeight);
+                  doc.addImage(img, 'WEBP', drawX, drawY, drawWidth, drawHeight);
+                  imgLoaded = true;
                 } catch (err) {
-                  // Fallback to JPEG if WEBP fails, or draw placeholder
                   try {
-                    doc.addImage(img, 'JPEG', cellX, cellY, cellWidth, cellHeight);
-                  } catch (e) {
-                    doc.setFontSize(6);
-                    doc.setTextColor(150, 150, 150);
-                    doc.text('IMAGE ERR', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
-                  }
+                    doc.addImage(img, 'JPEG', drawX, drawY, drawWidth, drawHeight);
+                    imgLoaded = true;
+                  } catch (e) {}
                 }
-              } else {
-                doc.setFontSize(6);
-                doc.setTextColor(150, 150, 150);
-                doc.text('NO VISUAL', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
               }
+            }
+
+            if (!imgLoaded) {
+              // Draw fallback gray background box
+              doc.setFillColor(244, 244, 245); // zinc-100
+              doc.rect(drawX, drawY, drawWidth, drawHeight, 'F');
+              doc.setDrawColor(228, 228, 231); // zinc-200
+              doc.rect(drawX, drawY, drawWidth, drawHeight, 'S');
+
+              // Draw centered text
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(161, 161, 170); // zinc-400
+              doc.setFontSize(7);
+              doc.text('NO VISUAL', drawX + drawWidth / 2, drawY + drawHeight / 2 + 1.5, { align: 'center' });
             } else {
-              doc.setFontSize(6);
-              doc.setTextColor(150, 150, 150);
-              doc.text('NO VISUAL', data.cell.x + (data.cell.width / 2), data.cell.y + (data.cell.height / 2), { align: 'center' });
+              // Draw thin border around the image
+              doc.setDrawColor(228, 228, 231); // zinc-200
+              doc.rect(drawX, drawY, drawWidth, drawHeight, 'S');
             }
           }
         }
       }
     });
+
+    // Add page numbers at the very end of generation when total page count is known
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let j = 1; j <= totalPages; j++) {
+      doc.setPage(j);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(113, 113, 122); // zinc-500
+      doc.setFontSize(8);
+      doc.text(`PAGE ${j} OF ${totalPages}`, pageWidth / 2, 203, { align: 'center' });
+    }
 
     doc.save(`${project.title}_shotlist.pdf`);
     setIsExportModalOpen(false);
